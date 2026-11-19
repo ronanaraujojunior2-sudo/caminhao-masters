@@ -34,7 +34,7 @@ grant execute on function
 to authenticated;
 
 -- Funções usadas internamente pelas regras de segurança (precisam ser executáveis)
-grant execute on function public.fn_exigir_perfil(text[]) to authenticated;
+-- (removido na migração 5: fn_exigir_perfil não precisa ser chamável pelo navegador)
 
 -- Funções svc_* : SOMENTE service_role (Edge Functions)
 revoke execute on function
