@@ -1,5 +1,5 @@
 // Gera web/js/config.js a partir das variáveis de ambiente.
-// - Na hospedagem (Cloudflare Pages): usa as variáveis cadastradas no painel.
+// - Opcional: o config.js publicado já vem preenchido com a chave pública.
 // - No computador: usa o arquivo .env, se existir.
 // Uso: node scripts/gerar-config.mjs
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';

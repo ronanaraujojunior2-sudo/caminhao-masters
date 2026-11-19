@@ -17,7 +17,7 @@ proteção contra conflitos no banco de dados e atualização em tempo real. Com
 ## Resumo técnico
 - **Front-end:** HTML/CSS/JavaScript puro (módulos ES), sem compilação — pasta `web/`.
 - **Back-end:** Supabase — PostgreSQL com RLS, funções e gatilhos (`supabase/migrations/`), Auth, Storage, Realtime e 3 Edge Functions (`supabase/functions/`).
-- **Hospedagem:** Cloudflare Pages a partir de repositório privado do GitHub (build: `node scripts/gerar-config.mjs`, saída: `web`).
+- **Hospedagem:** GitHub Pages (mesmo padrão do Controle de Ferramentas e Materiais), publicado automaticamente pela rotina `.github/workflows/publicar-site.yml`. Endereço: https://ronanaraujojunior2-sudo.github.io/caminhao-masters/
 - **Login:** nome de usuário + senha, sem e-mail; recuperação por chave pessoal.
 
 ## Início rápido (técnico)

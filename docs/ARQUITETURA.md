@@ -4,7 +4,7 @@
 
 | Camada | Tecnologia | Onde roda | Custo |
 |---|---|---|---|
-| Aplicativo (telas) | PWA em JavaScript puro, sem etapa de compilação | Cloudflare Pages, a partir de repositório privado do GitHub | Gratuito |
+| Aplicativo (telas) | PWA em JavaScript puro, sem etapa de compilação | GitHub Pages (repositório público, sem segredos no código) | Gratuito |
 | Banco de dados | PostgreSQL do Supabase | Supabase | Gratuito (plano Free) ou US$ 25/mês (Pro) |
 | Login e sessões | Supabase Auth (usuário + senha, **sem e-mail**) | Supabase | Incluído |
 | Regras de segurança | RLS (Row Level Security) + funções no banco | Supabase | Incluído |
@@ -74,7 +74,7 @@ Cada usuário tem `sessoes_invalidadas_em`. Toda regra de segurança confere se 
 | “Em manutenção” concluída | Mantém o período ocupado; cancelar libera | Histórico fiel do dia |
 | Itens críticos do checklist | Pneus, freios, luzes, gancho, cabos/cintas, comandos hidráulicos, patolas, lança, vazamentos — sempre críticos; demais podem ser marcados como críticos pelo motorista | Servidor recalcula; não confia no aparelho |
 | Abastecimento | Gera despesa automaticamente (pendente se lançada pelo motorista) | Evita lançamento em dobro |
-| Hospedagem | Cloudflare Pages | Gratuito, uso comercial permitido, repositório privado; GitHub Pages exige plano pago para privado e Vercel Hobby proíbe uso comercial |
+| Hospedagem | GitHub Pages | Mesmo padrão do Controle de Ferramentas e Materiais; sem serviço adicional; a segurança fica no Supabase (RLS e funções de servidor), não no sigilo do código |
 | Exportação PDF | Pela impressão do navegador (“Salvar como PDF”) com folha de estilo própria | Sem bibliotecas pesadas, funciona em qualquer aparelho |
 | Exportação Excel | Gerador XLSX próprio (validado com leitor de planilhas) | Sem dependências externas |
 | Feriados | Não automáticos nesta versão; usar Bloqueios | Fora do escopo do documento |

@@ -99,41 +99,28 @@ O aplicativo precisa de duas informações **públicas** do Supabase. Elas **nã
 
 ---
 
-## Etapa 6 — Publicar o sistema (Cloudflare Pages, gratuito)
-**Por que Cloudflare Pages:** é gratuito, permite uso comercial, publica a partir de repositório **privado** do GitHub e não tem limite de tráfego. (GitHub Pages exige plano pago para repositório privado e não é destinado a uso empresarial; o plano gratuito da Vercel proíbe uso comercial.)
+## Etapa 6 — Publicar o sistema (GitHub Pages, gratuito)
+**Por que GitHub Pages:** é o mesmo padrão do Controle de Ferramentas e Materiais (GitHub + Supabase), é gratuito e não acrescenta nenhum serviço novo. O site fica em `https://ronanaraujojunior2-sudo.github.io/caminhao-masters/`.
 
-### 6.1 Repositório privado no GitHub
-1. Instale o **GitHub Desktop** (https://desktop.github.com), entre com sua conta.
-2. **File → Add local repository** → escolha a pasta `caminhao-masters` → clique em **create a repository** → **Create repository**.
-3. Clique em **Publish repository**, deixe marcado **Keep this code private** → **Publish repository**.
+**Repositório público:** no plano gratuito, o GitHub Pages só publica repositórios públicos. Qualquer pessoa pode **ler o código**, mas **não os dados**: o código não tem senhas nem chaves secretas, a única chave do Supabase no site é a pública (feita para ficar visível) e toda a proteção fica no banco e nas funções do Supabase.
 
-✅ **Como conferir:** em https://github.com, o repositório `caminhao-masters` aparece com o cadeado (privado) e as pastas `web`, `supabase`, `docs`.
+### 6.1 Endereço e chave pública
+O arquivo `web/js/config.js` já está preenchido com o endereço do projeto Supabase e a **Publishable key**. **Nunca** coloque ali a chave `secret`/`service_role`.
 
-### 6.2 Criar o site no Cloudflare
-1. Acesse https://dash.cloudflare.com/sign-up e crie a conta gratuita (confirme o e-mail).
-2. Menu **Workers & Pages** → **Create** → aba **Pages** → **Connect to Git** (Importar repositório existente).
-3. Autorize o GitHub, permitindo acesso **somente** ao repositório `caminhao-masters`. Selecione-o → **Begin setup**.
-4. Preencha:
-   - **Project name:** `caminhao-masters` (será o endereço `caminhao-masters.pages.dev`; se estiver ocupado, use `caminhao-masters-eng`).
-   - **Production branch:** `main`.
-   - **Framework preset:** `None`.
-   - **Build command:** `node scripts/gerar-config.mjs`
-   - **Build output directory:** `web`
-5. Abra **Environment variables (advanced)** e adicione:
-   - `SUPABASE_URL` = a Project URL da Etapa 4;
-   - `SUPABASE_KEY` = a Publishable key da Etapa 4.
-6. **Save and Deploy**. Aguarde 1–2 minutos.
+### 6.2 Publicação automática (já configurada)
+1. No GitHub: repositório `caminhao-masters` → **Settings → Pages → Source: GitHub Actions**.
+2. A rotina `.github/workflows/publicar-site.yml` publica a pasta `web` sempre que algo muda nela na branch `main`. Antes de publicar, ela confere se não há chave secreta no site e cancela a publicação se houver.
 
-✅ **Como conferir:** aparece **Success** e o endereço `https://caminhao-masters.pages.dev`. Ao abri-lo, aparece a tela de login.
+✅ **Como conferir:** em **Actions**, a execução "Publicar site (GitHub Pages)" aparece com ✓ verde. Ao abrir o endereço, aparece a tela de login com a logo da Masters.
 
-**Se der erro:** clique na implantação → **View build log**. Mensagens comuns: “SUPABASE_URL ausente ou inválida” (variável não cadastrada ou com espaço) e “PERIGO: chave SECRETA” (foi usada a chave errada). Corrija em **Settings → Variables and Secrets** e clique em **Retry deployment**.
+**Se der erro:** clique na execução com ✗ vermelho e leia a mensagem. "Chave secreta encontrada" significa que a chave errada foi colocada no `config.js`: troque-a pela Publishable key. Depois de corrigir, a publicação roda sozinha; também é possível rodá-la em **Actions → Publicar site → Run workflow**.
 
-**Atualizações futuras:** altere os arquivos na pasta, abra o GitHub Desktop, escreva um resumo (ex.: “Ajuste na agenda”), clique em **Commit to main** e **Push origin**. O Cloudflare publica sozinho em 1–2 minutos. Ao alterar telas, aumente a versão em `web/sw.js` (`const VERSAO = ...`).
+**Atualizações futuras:** altere os arquivos, faça **Commit to main** e **Push origin** no GitHub Desktop. O site é atualizado em 1–2 minutos. Ao alterar telas, aumente a versão em `web/sw.js` (`const VERSAO = ...`) para os aparelhos baixarem a versão nova.
 
 ---
 
 ## Etapa 7 — Cadastrar o administrador inicial
-1. Abra o endereço publicado acrescentando **`#/instalacao`** ao final. Ex.: `https://caminhao-masters.pages.dev/#/instalacao`.
+1. Abra o endereço publicado acrescentando **`#/instalacao`** ao final. Ex.: `https://ronanaraujojunior2-sudo.github.io/caminhao-masters/#/instalacao`.
 2. Preencha: **Token de instalação** (o `BOOTSTRAP_TOKEN` da Etapa 3.3), **Nome completo** e **Nome de usuário** (ex.: `masters.admin`).
 3. Clique em **Criar administrador** e **anote o código de primeiro acesso** exibido.
 4. **Imediatamente**, no Supabase → **Edge Functions → Secrets**, **apague** o segredo `BOOTSTRAP_TOKEN`.
@@ -240,8 +227,8 @@ Sem esta etapa, as notificações funcionam no sino do sistema e como aviso do n
 | Supabase plano **Free** | R$ 0 | Banco de 500 MB, cerca de 1 GB de arquivos (fotos/documentos), 50 mil usuários ativos/mês. Projeto pausa após 7 dias sem uso (o backup diário evita). Sem backup automático do próprio Supabase. |
 | Supabase plano **Pro** (recomendado após o período de testes) | a partir de US$ 25/mês (cerca de R$ 130–150) | Sem pausa, 8 GB de banco, mais armazenamento, backups diários do próprio Supabase. Inclui US$ 10 de crédito de processamento, que cobre a menor instância. |
 | GitHub (repositório privado e backup via Actions) | R$ 0 | Plano gratuito inclui repositórios privados e minutos de Actions suficientes para o backup diário. |
-| Cloudflare Pages (hospedagem) | R$ 0 | Uso comercial permitido, sem limite de tráfego, 500 publicações/mês. |
-| Domínio próprio (opcional, ex.: `caminhao.masters.com.br`) | ~R$ 40/ano no Registro.br | Se a Masters já tem domínio, basta criar um subdomínio e ligá-lo em Cloudflare Pages → Custom domains. |
+| GitHub Pages (hospedagem) | R$ 0 | Mesmo GitHub já usado no projeto; repositório público; limite de 100 GB de tráfego por mês, muito acima do uso esperado. |
+| Domínio próprio (opcional, ex.: `caminhao.masters.com.br`) | ~R$ 40/ano no Registro.br | Se a Masters já tem domínio, basta criar um subdomínio e ligá-lo em GitHub → Settings → Pages → Custom domain. |
 | Push, e-mail, SMS | R$ 0 | O sistema não usa e-mail nem SMS. |
 
 **Estimativa de uso:** cada foto é reduzida para ~200–400 KB antes do envio; 1 GB comporta aproximadamente 3.000 fotos. Com uso intenso de fotos, o plano Free tende a ficar pequeno em alguns meses.
