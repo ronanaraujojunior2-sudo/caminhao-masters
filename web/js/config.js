@@ -6,9 +6,9 @@
 // =====================================================================
 export const CONFIG = {
   // Supabase > Project Settings > API > Project URL
-  SUPABASE_URL: 'COLE_AQUI_A_URL_DO_PROJETO',          // ex.: https://abcdefgh.supabase.co
+  SUPABASE_URL: 'https://wjxnjbaqhsgefnprmksi.supabase.co',
   // Supabase > Project Settings > API Keys > "Publishable key" (ou "anon public")
-  SUPABASE_KEY: 'COLE_AQUI_A_CHAVE_PUBLICA',
+  SUPABASE_KEY: 'sb_publishable_j62Yh5G6Vp5UR3pQu06_VA_glY5W-oW',
   // Domínio interno dos logins (nunca é mostrado). Igual ao segredo AUTH_EMAIL_DOMAIN das funções.
   AUTH_EMAIL_DOMAIN: 'caminhaomasters.local',
   // Opcional: chave pública VAPID para notificações push (deixe vazio para desativar)
