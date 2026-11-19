@@ -15,7 +15,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const URL_SB = Deno.env.get("SUPABASE_URL")!;
 const SERVICE = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("CM_SERVICE_ROLE_KEY"))!;
 const DOMINIO = Deno.env.get("AUTH_EMAIL_DOMAIN") ?? "caminhaomasters.local";
-const BOOTSTRAP = Deno.env.get("BOOTSTRAP_TOKEN") ?? "";
+const BOOTSTRAP = (Deno.env.get("BOOTSTRAP_TOKEN") ?? "").trim();
 
 const admin = createClient(URL_SB, SERVICE, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -111,12 +111,17 @@ Deno.serve(async (req) => {
 
     // ---------- Administrador inicial (só funciona se NÃO houver nenhum admin) ----------
     if (b.acao === "bootstrap") {
+      // Sem token configurado a criação é impossível; avisar isso não ajuda um atacante
+      // e evita gastar tentativas à toa. Não conta como tentativa.
+      if (BOOTSTRAP.length < 16) {
+        return resp(503, { erro: "O token de instalação ainda não está cadastrado no Supabase (segredo BOOTSTRAP_TOKEN, mínimo 16 caracteres). Cadastre-o e tente de novo." });
+      }
       const chave = "ip:" + ip(req);
       const { data: bloqueado } = await admin.rpc("svc_limite_excedido", { p_chave: chave, p_tipo: "bootstrap", p_max: 5, p_minutos: 60 });
       if (bloqueado) return resp(429, { erro: "Muitas tentativas. Aguarde 1 hora." });
-      if (!BOOTSTRAP || BOOTSTRAP.length < 16 || !iguaisTempoConstante(String(b.token ?? ""), BOOTSTRAP)) {
+      if (!iguaisTempoConstante(String(b.token ?? "").trim(), BOOTSTRAP)) {
         await admin.rpc("svc_registrar_tentativa", { p_chave: chave, p_tipo: "bootstrap", p_sucesso: false });
-        return resp(403, { erro: "Token de instalação inválido ou não configurado (mínimo 16 caracteres)." });
+        return resp(403, { erro: "Token de instalação incorreto. Confira se é exatamente o valor salvo no Supabase (maiúsculas e minúsculas contam)." });
       }
       const { count } = await admin.from("perfis").select("id", { count: "exact", head: true }).eq("perfil", "admin");
       if ((count ?? 0) > 0) return resp(409, { erro: "Já existe administrador cadastrado. Use a tela de usuários." });
