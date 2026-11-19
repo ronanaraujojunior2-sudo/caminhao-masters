@@ -1,0 +1,16 @@
+{
+  "name": "caminhao-masters",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Caminhão Masters — agenda e gestão operacional do caminhão Munck da Masters Engenharia",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.mjs",
+    "test:banco": "bash tests/rodar_testes_banco.sh",
+    "test:visual": "python3 tests/visual/testar_telas.py",
+    "test:tudo": "bash tests/rodar_todos.sh",
+    "config": "node scripts/gerar-config.mjs",
+    "banco": "bash scripts/gerar_banco_completo.sh",
+    "local": "npx --yes serve web -l 8080"
+  }
+}

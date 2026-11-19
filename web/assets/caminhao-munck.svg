@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" role="img" aria-label="Ilustração de caminhão Munck">
+  <g fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 150 V95 a10 10 0 0 1 10 -10 H95 l28 32 v33" fill="#FFFFFF" fill-opacity=".12"/>
+    <path d="M48 93 h38 l18 22 H48 z"/>
+    <path d="M123 150 H370 V125 H123"/>
+    <path d="M130 125 V108 h28 v17"/>
+    <path d="M144 108 L250 45"/>
+    <path d="M250 45 L330 38"/>
+    <path d="M150 112 L238 60"/>
+    <path d="M330 38 V78"/>
+    <path d="M322 78 q8 14 16 0"/>
+    <path d="M300 125 v-25 h55 v25" fill="#FFFFFF" fill-opacity=".12"/>
+    <path d="M135 150 v22 M360 150 v22" />
+  </g>
+  <g fill="#FC0A0B"><rect x="128" y="146" width="12" height="8" rx="2"/><rect x="355" y="146" width="12" height="8" rx="2"/></g>
+  <g fill="#FFFFFF"><circle cx="75" cy="168" r="20"/><circle cx="240" cy="168" r="20"/><circle cx="290" cy="168" r="20"/></g>
+  <g fill="#313E86"><circle cx="75" cy="168" r="8"/><circle cx="240" cy="168" r="8"/><circle cx="290" cy="168" r="8"/></g>
+  <path d="M20 192 H385" stroke="#FFFFFF" stroke-width="4" stroke-dasharray="18 12" stroke-linecap="round"/>
+</svg>

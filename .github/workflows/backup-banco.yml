@@ -1,0 +1,31 @@
+# Backup diário CRIPTOGRAFADO do banco (gratuito). Também mantém o projeto Supabase
+# gratuito ativo (projetos sem uso por 7 dias são pausados).
+# Segredos necessários (GitHub > Settings > Secrets and variables > Actions):
+#   SUPABASE_DB_URL  e  BACKUP_SENHA
+name: Backup do banco
+on:
+  schedule: [{ cron: '17 9 * * *' }]   # todo dia ~05:17 em Manaus
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar cliente PostgreSQL 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: Gerar backup criptografado
+        env: { DB: '${{ secrets.SUPABASE_DB_URL }}', SENHA: '${{ secrets.BACKUP_SENHA }}' }
+        run: |
+          set -euo pipefail
+          D=$(date +%F)
+          /usr/lib/postgresql/17/bin/pg_dump "$DB" --schema=public --no-owner --no-privileges -Fc -f "banco-$D.dump"
+          /usr/lib/postgresql/17/bin/pg_dump "$DB" --schema=auth --data-only --table=auth.users --table=auth.identities -Fc -f "logins-$D.dump"
+          tar czf "backup-$D.tgz" banco-$D.dump logins-$D.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$SENHA" --symmetric --cipher-algo AES256 -o "backup-caminhao-masters-$D.tgz.gpg" "backup-$D.tgz"
+          rm -f *.dump "backup-$D.tgz"
+      - uses: actions/upload-artifact@v4
+        with: { name: backup-caminhao-masters, path: '*.gpg', retention-days: 90 }

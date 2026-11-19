@@ -1,0 +1,19 @@
+# Configuração para quem usar a Supabase CLI (opcional).
+# Pelo painel web, desligue manualmente "Verify JWT" nas três funções.
+project_id = "caminhao-masters"
+
+[auth]
+enable_signup = false
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[functions.acesso]
+verify_jwt = false
+
+[functions.usuarios]
+verify_jwt = false
+
+[functions.enviar-push]
+verify_jwt = false

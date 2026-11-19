@@ -1,0 +1,14 @@
+# NUNCA enviar segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# arquivos gerados / temporários
+node_modules/
+__pycache__/
+tests/visual/capturas/
+*.dump
+*.gpg
+.DS_Store
+Thumbs.db
