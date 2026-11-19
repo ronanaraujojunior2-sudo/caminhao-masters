@@ -4,6 +4,7 @@ import { esc, fmtData, fmtPeriodo, fmtDataHora, nomeDia, nomeDiaCurto, nomeMes, 
   janela, opcoes, carregando, vazio, aviso, telLink, mapaLink } from '../ui.js';
 import * as R from '../lib/regras.js';
 import { aoMudarAgenda } from '../sync.js';
+import { ativarBuscaObra } from '../busca-obra.js';
 
 const podeSolicitar = () => ehAdmin() || ehSolicitante();
 
@@ -23,7 +24,7 @@ export async function render(el, params) {
   };
 
   const [obras, categorias] = await Promise.all([
-    q(sb.from('obras').select('id, nome, ativa').order('nome')),
+    q(sb.from('obras').select('id, nome, codigo_sienge, cliente, endereco, ativa').order('nome')),
     q(sb.from('categorias').select('nome').order('ordem')),
   ]).catch(() => [lerCache('obras') || [], []]);
   gravarCache('obras', obras);
@@ -45,7 +46,7 @@ export async function render(el, params) {
     </div>
     <details class="cartao nao-imprimir" ${matchMedia('(min-width: 900px)').matches ? 'open' : ''}><summary><b>Filtros</b></summary>
       <div class="filtros" style="margin-top:.7rem">
-        <label class="campo"><span>Obra</span><select data-f="obra">${opcoes(obras.map((o) => [o.id, o.nome + (o.ativa ? '' : ' (inativa)')]), '', 'Todas')}</select></label>
+        <label class="campo"><span>Obra</span><select data-f="obra">${opcoes(obras.map((o) => [o.id, (o.codigo_sienge ? o.codigo_sienge + ' · ' : '') + o.nome + (o.ativa ? '' : ' (inativa)')]), '', 'Todas')}</select></label>
         <label class="campo"><span>Situação</span><select data-f="situacao">${opcoes(Object.entries(R.SITUACOES).map(([k, v]) => [k, v.rotulo]), '', 'Todas')}</select></label>
         <label class="campo"><span>Categoria</span><select data-f="categoria">${opcoes([...new Set([...categorias.map((c) => c.nome), 'Bloqueio'])].map((c) => [c, c]), '', 'Todas')}</select></label>
         <label class="campo"><span>Período</span><select data-f="periodo">${opcoes([['manha', 'Manhã'], ['tarde', 'Tarde']], '', 'Manhã e tarde')}</select></label>
@@ -201,7 +202,7 @@ export async function render(el, params) {
         <div><dt>Data e período</dt><dd>${fmtData(it.data)} (${esc(nomeDiaCurto(it.data))}) — ${esc(fmtPeriodo(it.periodo))}</dd></div>
         <div><dt>Obra</dt><dd>${esc(it.obra_nome)}</dd></div>
         <div><dt>Endereço</dt><dd>${mapaLink(it.obra_endereco)}</dd></div>
-        <div><dt>Responsável da obra</dt><dd>${esc(it.obra_responsavel)} · ${telLink(it.obra_telefone)}</dd></div>
+        <div><dt>Responsável da obra</dt><dd>${it.obra_responsavel ? `${esc(it.obra_responsavel)} · ${telLink(it.obra_telefone)}` : 'Não informado'}</dd></div>
         ${it.contato1_nome ? `<div><dt>Contato</dt><dd>${esc(it.contato1_nome)} · ${telLink(it.contato1_telefone)}</dd></div>` : ''}
         ${it.contato2_nome ? `<div><dt>Contato</dt><dd>${esc(it.contato2_nome)} · ${telLink(it.contato2_telefone)}</dd></div>` : ''}
         <div><dt>Solicitante</dt><dd>${esc(it.solicitante_nome)}</dd></div>
@@ -255,10 +256,11 @@ export async function render(el, params) {
     if (it) { const [o, id, p] = it.dataset.item.split('|'); abrirItem(o, id, p); return; }
     const lv = e.target.closest('[data-livre]');
     if (lv) { const [d, p] = lv.dataset.livre.split('|'); clicarLivre(d, p); return; }
-    if (e.target.id === 'limpar') { st.filtros = { obra: '', situacao: '', categoria: '', periodo: '' }; el.querySelectorAll('[data-f]').forEach((s) => { s.value = ''; }); desenhar(); }
+    if (e.target.id === 'limpar') { st.filtros = { obra: '', situacao: '', categoria: '', periodo: '' }; el.querySelectorAll('[data-f]').forEach((s) => { s.value = ''; s.dispatchEvent(new Event('busca:atualizar')); }); desenhar(); }
   });
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('.item')) e.target.click(); });
   el.querySelectorAll('[data-f]').forEach((s) => s.addEventListener('change', () => { st.filtros[s.dataset.f] = s.value; desenhar(); }));
+  ativarBuscaObra(el.querySelector('[data-f=obra]'), obras, { placeholder: 'Todas — digite para pesquisar' });
 
   aoMudarAgenda(carregar);
   await carregar();

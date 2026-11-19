@@ -7,6 +7,7 @@ import { STATUS_SOLICITACAO, PRIORIDADES } from '../lib/regras.js';
 import { criarXLSX } from '../lib/xlsx.js';
 import { aoMudarAgenda } from '../sync.js';
 import { atualizarPendentes } from '../app.js';
+import { ativarBuscaObra } from '../busca-obra.js';
 
 export async function render(el, params) {
   if (params.id) return detalhe(el, params.id);
@@ -15,7 +16,7 @@ export async function render(el, params) {
 
 async function lista(el, params) {
   const admin = ehAdmin();
-  const obras = await q(sb.from('obras').select('id, nome').order('nome'));
+  const obras = await q(sb.from('obras').select('id, nome, codigo_sienge, cliente, endereco, ativa').order('nome'));
   const st = { aba: params.aba || (admin ? 'analise' : 'todas'), obra: '', de: '', ate: '', texto: '' };
   el.innerHTML = `
     <div class="cabecalho"><h1>${admin ? 'Solicitações' : 'Minhas solicitações'}</h1>
@@ -26,7 +27,7 @@ async function lista(el, params) {
       ['esclarecimento', 'Esclarecimentos'], ['aprovada', 'Aprovadas'], ['encerradas', 'Encerradas'], ['todas', 'Todas'],
     ].map(([k, t]) => `<button role="tab" data-aba="${k}" class="${st.aba === k ? 'ativa' : ''}">${t}</button>`).join('')}</div>
     <div class="filtros">
-      <label class="campo"><span>Obra</span><select id="f-obra">${opcoes(obras.map((o) => [o.id, o.nome]), '', 'Todas')}</select></label>
+      <label class="campo"><span>Obra</span><select id="f-obra">${opcoes(obras.map((o) => [o.id, (o.codigo_sienge ? o.codigo_sienge + ' · ' : '') + o.nome]), '', 'Todas')}</select></label>
       <label class="campo"><span>De</span><input type="date" id="f-de"></label>
       <label class="campo"><span>Até</span><input type="date" id="f-ate"></label>
       <label class="campo"><span>Buscar</span><input id="f-texto" placeholder="Nº, descrição..."></label>
@@ -78,6 +79,7 @@ async function lista(el, params) {
   });
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('tr[data-id]')) e.target.click(); });
   el.querySelector('#f-obra').onchange = (e) => { st.obra = e.target.value; carregar(); };
+  ativarBuscaObra(el.querySelector('#f-obra'), obras, { placeholder: 'Todas — digite para pesquisar' });
   el.querySelector('#f-de').onchange = (e) => { st.de = e.target.value; carregar(); };
   el.querySelector('#f-ate').onchange = (e) => { st.ate = e.target.value; carregar(); };
   let t; el.querySelector('#f-texto').oninput = (e) => { clearTimeout(t); t = setTimeout(() => { st.texto = e.target.value; carregar(); }, 300); };
@@ -136,9 +138,9 @@ async function detalhe(el, id) {
           ${s.execucao_inicio ? `<div><dt>Atendimento</dt><dd>${fmtDataHora(s.execucao_inicio)} → ${fmtDataHora(s.execucao_fim)}${s.motorista ? `<br>Motorista: ${esc(s.motorista.nome_completo)}` : ''}${s.execucao_offline ? '<br><small>Registrado sem conexão e sincronizado</small>' : ''}</dd></div>` : ''}
         </dl></section>
         <section class="cartao"><h2>Obra</h2><dl class="detalhes">
-          <div><dt>Obra</dt><dd>${esc(o.nome)}${o.ativa ? '' : ' (inativa)'}</dd></div>
+          <div><dt>Obra</dt><dd>${o.codigo_sienge ? esc(o.codigo_sienge) + ' · ' : ''}${esc(o.nome)}${o.ativa ? '' : ' (inativa)'}</dd></div>
           <div><dt>Endereço</dt><dd>${mapaLink(o.endereco)}</dd></div>
-          <div><dt>Responsável principal</dt><dd>${esc(o.responsavel_nome)} · ${telLink(o.responsavel_telefone)}</dd></div>
+          <div><dt>Responsável principal</dt><dd>${o.responsavel_nome ? `${esc(o.responsavel_nome)} · ${telLink(o.responsavel_telefone)}` : 'Não informado (obra importada do Sienge — o administrador ainda vai completar)'}</dd></div>
           ${o.contato1_nome ? `<div><dt>Contato adicional</dt><dd>${esc(o.contato1_nome)} · ${telLink(o.contato1_telefone)}</dd></div>` : ''}
           ${o.contato2_nome ? `<div><dt>Contato adicional</dt><dd>${esc(o.contato2_nome)} · ${telLink(o.contato2_telefone)}</dd></div>` : ''}
         </dl></section>

@@ -1,9 +1,9 @@
 // Service Worker do Caminhão Masters: funciona offline e recebe notificações push.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'cm-v1.2.0';
+const VERSAO = 'cm-v1.4.0';
 const ARQUIVOS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
-  './js/tema.js', './js/app.js', './js/api.js', './js/ui.js', './js/sync.js', './js/config.js',
+  './js/tema.js', './js/abertura.js', './js/busca-obra.js', './js/lib/busca-texto.js', './js/app.js', './js/api.js', './js/ui.js', './js/sync.js', './js/config.js',
   './js/lib/regras.js', './js/lib/fila.js', './js/lib/xlsx.js', './js/lib/checklists.js',
   './js/paginas/login.js', './js/paginas/primeiro-acesso.js', './js/paginas/recuperar.js', './js/paginas/chave.js',
   './js/paginas/motorista.js', './js/paginas/agenda.js', './js/paginas/diario.js', './js/paginas/documentos.js',

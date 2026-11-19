@@ -156,7 +156,11 @@ export async function ocupado(botao, fn) {
   try { return await fn(); } finally { if (botao) { botao.disabled = false; botao.innerHTML = original; } }
 }
 
-export const carregando = (txt = 'Carregando…') => `<div class="carregando"><span class="giro"></span> ${esc(txt)}</div>`;
+const MINI_MUNCK = `<svg class="mini-munck" viewBox="0 0 46 28" aria-hidden="true"><path d="M2 21h26v-4H2z" fill="currentColor" opacity=".55"/><path d="M29 21V11h7l5 5v5z" fill="currentColor"/>
+  <path d="M20 17V12" stroke="currentColor" stroke-width="2"/><path d="M20 12L6 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+  <g class="mm-gancho"><path d="M6 4v7" stroke="currentColor" stroke-width="1.2"/><path d="M6 11v2a2 2 0 0 1-3 1.5" fill="none" stroke="#FC0A0B" stroke-width="1.6" stroke-linecap="round"/></g>
+  <circle cx="8" cy="23" r="3" fill="currentColor"/><circle cx="34" cy="23" r="3" fill="currentColor"/></svg>`;
+export const carregando = (txt = 'Carregando…') => `<div class="carregando" role="status">${MINI_MUNCK} ${esc(txt)}</div>`;
 export const vazio = (txt) => `<div class="vazio">${esc(txt)}</div>`;
 
 export function baixarArquivo(nome, bytes, tipo = 'application/octet-stream') {

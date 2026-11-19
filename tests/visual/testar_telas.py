@@ -23,7 +23,9 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 URL = 'http://127.0.0.1:8765/index.html'
 
 erros = []
-def preparar(ctx, nome):
+def preparar(ctx, nome, abertura=False):
+    # a animação de abertura aparece uma vez por sessão; nos testes de telas ela é marcada como já vista
+    if not abertura: ctx.add_init_script("sessionStorage.setItem('cm-abertura-vista', '1')")
     ctx.route('**/js/config.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=CONFIG))
     ctx.route('https://cdn.jsdelivr.net/**', lambda r: r.fulfill(status=200, content_type='application/javascript', body=SIMULADO))
     p = ctx.new_page()
@@ -81,6 +83,33 @@ with sync_playwright() as pw:
     p.click('[data-pagina="1"]'); p.wait_for_timeout(500)
     assert 'Página 2 de 2' in p.inner_text('#lista'), 'botão Próxima não funcionou'
     print('ok - paginação das tabelas (Anterior/Próxima)'); foto(p, '23b-obras-paginacao')
+    # importação de obras do Sienge: arquivo -> prévia -> confirmação -> relatório
+    p.click('#importar'); p.wait_for_selector('#imp-escolher')
+    p.set_input_files('#imp-arquivo', os.path.join(RAIZ, 'tests', 'fixtures', 'obras-sienge-teste.xlsx'))
+    p.wait_for_selector('#imp-confirmar', timeout=8000)
+    t_prev = p.inner_text('#imp-corpo')
+    assert 'nada foi gravado ainda' in t_prev and 'RESIDENCIAL TESTE ALFA' in t_prev and 'Com erro (2)' in t_prev, 'prévia da importação incompleta'
+    assert '01/01/2026 a 16/11/2026' in t_prev and 'Área total' in t_prev, 'período/colunas do relatório não exibidos'
+    assert p.inner_text('#imp-confirmar') == 'Confirmar importação (4 obras)', 'obra encerrada deveria vir desmarcada: ' + p.inner_text('#imp-confirmar')
+    with p.expect_download() as dl: p.click('#imp-baixar-erros')
+    rel = open(dl.value.path(), encoding='utf-8-sig').read()
+    assert 'OBRA SEM CODIGO' in rel and 'repetido' in rel, 'relatório de erros incompleto'
+    print('ok - relatório de erros da importação para baixar (Excel/CSV)')
+    p.uncheck('input[data-cod="500"]'); p.wait_for_timeout(100)
+    assert p.inner_text('#imp-confirmar') == 'Confirmar importação (3 obras)', 'desmarcar não atualizou a contagem'
+    foto(p, '23c-obras-importar-previa')
+    p.click('#imp-confirmar'); p.wait_for_selector('.janela'); p.click('.janela footer .btn-pri')
+    p.wait_for_selector('#imp-ok', timeout=8000)
+    env = p.evaluate('window.__ultimaImportacao')
+    assert env['p_arquivo'] == 'obras-sienge-teste.xlsx' and [l['codigo'] for l in env['p_linhas']] == ['55', '101', '50'], 'envio da importação incorreto'
+    assert env['p_linhas'][0]['cliente'] == 'Cliente Alfa' and env['p_linhas'][0]['dados']['data_cadastro'] == '2024-03-15', 'dados do Sienge não enviados'
+    assert 'Importação concluída' in p.inner_text('#imp-corpo'), 'relatório final ausente'
+    assert 'Ignoradas' in p.inner_text('#imp-corpo'), 'resumo final sem ignoradas'
+    with p.expect_download() as dl: p.click('#imp-baixar-rel')
+    rel = open(dl.value.path(), encoding='utf-8-sig').read()
+    assert 'Cadastrada' in rel and 'Desmarcada' in rel and 'Com erro' in rel, 'relatório completo incorreto'
+    foto(p, '23d-obras-importar-resultado'); p.click('#imp-ok')
+    print('ok - importar obras do Sienge: arquivo real do formato Sienge, prévia, encerrada desmarcada, confirmação e relatório')
     # ☰ recolhe a barra lateral no computador
     p.click('#menu-botao'); p.wait_for_timeout(200)
     assert p.evaluate("document.body.classList.contains('recolhido')") and not p.is_visible('#lateral'), '☰ não recolheu o menu'
@@ -112,6 +141,25 @@ with sync_playwright() as pw:
     p.click('.janela footer .btn-perigo'); p.wait_for_timeout(300)
     assert p.locator('.janela-erro:not([hidden])').count() == 1, 'recusa sem justificativa deveria ser bloqueada na tela'
     print('ok - recusa sem justificativa bloqueada na interface'); foto(p, '14b-recusa-exige-justificativa', False); p.click('.janela .fechar')
+    # pesquisa de obras (nova solicitação): digitar parte do nome e escolher
+    ir(p, '#/solicitar')
+    caixa = p.locator('.busca-obra input')
+    caixa.click(); caixa.fill('teste 2')
+    p.wait_for_selector('.bo-lista li[data-i]')
+    nomes = p.locator('.bo-lista li[data-i] b').all_inner_texts()
+    assert nomes and nomes[0].startswith('Obra Teste 2') and all('Teste' in n and '2' in n for n in nomes), 'pesquisa de obra não filtrou: %s' % nomes
+    foto(p, '15b-pesquisa-obra', False)
+    caixa.press('ArrowDown'); caixa.press('Enter')
+    escolhida = p.evaluate("document.querySelector('[name=obra_id]').value")
+    assert escolhida and caixa.input_value().startswith('Obra Teste 2'), 'seleção pelo teclado falhou'
+    caixa.fill('zzzz'); p.wait_for_selector('.bo-nada')
+    assert p.evaluate("document.querySelector('[name=obra_id]').value") == '', 'texto sem resultado deveria limpar a obra'
+    print('ok - pesquisa de obras: resultados ao digitar, teclado, limpar seleção')
+    # filtro de obra nas solicitações
+    ir(p, '#/solicitacoes'); f = p.locator('.busca-obra input'); f.click(); f.fill('exemplo a')
+    p.locator('.bo-lista li[data-i]').first.click(); p.wait_for_timeout(300)
+    assert p.evaluate("document.querySelector('#f-obra').value") != '', 'filtro de obra por pesquisa falhou'
+    print('ok - pesquisa de obras também nos filtros de solicitações')
     ir(p, '#/usuarios'); p.click('#novo'); p.wait_for_selector('.janela'); foto(p, '25b-novo-usuario', False); p.click('.janela .fechar')
     ctx.close()
 
@@ -145,6 +193,11 @@ with sync_playwright() as pw:
     p.click('button[type=submit]'); p.wait_for_timeout(300)
     assert 'Preencha' in p.inner_text('#erro'), 'formulário vazio deveria ser recusado'
     print('ok - formulário de solicitação valida campos obrigatórios')
+    caixa = p.locator('.busca-obra input'); caixa.tap(); caixa.fill('exemplo')
+    p.wait_for_selector('.bo-lista li[data-i]'); foto(p, '41b-pesquisa-obra-celular', False)
+    p.locator('.bo-lista li[data-i]').first.tap(); p.wait_for_timeout(200)
+    assert p.evaluate("document.querySelector('[name=obra_id]').value") != '' and p.locator('.bo-lista').is_hidden(), 'escolha por toque falhou'
+    print('ok - pesquisa de obras no celular (toque)')
     ir(p, '#/solicitacoes/s4'); foto(p, '42-solicitante-detalhe')
     assert p.locator('[data-acao=aprovar]').count() == 0, 'solicitante vê botão de aprovar'
     print('ok - solicitante não vê ações administrativas')
@@ -154,6 +207,32 @@ with sync_playwright() as pw:
     ctx = nav.new_context(viewport={'width': 820, 'height': 1180}, is_mobile=True, has_touch=True, service_workers='block', locale='pt-BR', timezone_id='America/Manaus')
     p = preparar(ctx, 'tablet')
     entrar(p, 'admin'); ir(p, '#/agenda'); foto(p, '50-tablet-agenda')
+    ctx.close()
+
+    # ---------------- ABERTURA (caminhão Munck) ----------------
+    ctx = nav.new_context(viewport={'width': 1366, 'height': 820}, service_workers='block', locale='pt-BR')
+    p = preparar(ctx, 'abertura', abertura=True)
+    t0 = time.time(); p.goto(URL); p.wait_for_selector('.abertura')
+    p.wait_for_selector('#f-login', state='attached', timeout=8000)
+    assert p.locator('.abertura').count() == 1, 'abertura não apareceu'
+    p.wait_for_selector('.abertura', state='detached', timeout=8000); dur = time.time() - t0
+    assert dur < 6, 'abertura demorou demais: %.1fs' % dur
+    print('ok - abertura do caminhão Munck aparece e termina sozinha (%.1fs), com o sistema carregado por trás' % dur)
+    p.reload(); p.wait_for_selector('#f-login'); p.wait_for_timeout(300)
+    assert p.locator('.abertura').count() == 0, 'abertura repetiu na mesma sessão'
+    print('ok - abertura não se repete na mesma sessão')
+    ctx.close()
+    ctx = nav.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True, service_workers='block')
+    p = preparar(ctx, 'abertura-pular', abertura=True)
+    p.goto(URL); p.wait_for_selector('.abertura'); p.wait_for_timeout(900); foto(p, '60-abertura-celular', False)
+    p.tap('.abertura-pular'); p.wait_for_selector('.abertura', state='detached', timeout=2000)
+    print('ok - abertura pode ser pulada com um toque')
+    ctx.close()
+    ctx = nav.new_context(viewport={'width': 1366, 'height': 820}, reduced_motion='reduce', service_workers='block')
+    p = preparar(ctx, 'abertura-reduzida', abertura=True)
+    p.goto(URL); p.wait_for_selector('#f-login'); p.wait_for_timeout(300)
+    assert p.locator('.abertura').count() == 0, 'abertura apareceu com movimento reduzido'
+    print('ok - abertura respeita “reduzir movimento” do aparelho')
     ctx.close()
     nav.close()
 

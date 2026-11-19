@@ -5,6 +5,7 @@ import { CHECKLISTS, RESULTADOS, ehCritico, lerChecklist, faltando } from '../li
 import { diferencaMateriais } from '../lib/regras.js';
 import { novoId } from '../lib/fila.js';
 import { registrar, registrarFotos } from '../sync.js';
+import { ativarBuscaObra } from '../busca-obra.js';
 
 const agoraISO = () => new Date().toISOString();
 const paraLocalInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -102,6 +103,7 @@ export async function encerrarExpediente(aoConcluir, obras = []) {
     </form>`,
     botoes: [{ texto: 'Voltar', valor: null, classe: 'btn-sec' }, { texto: 'Encerrar expediente', valor: 'ok' }],
     aoAbrir: (j) => {
+      ativarBuscaObra(j.querySelector('[name=local_obra_id]'), obras);
       const s = j.querySelector('#local');
       s.onchange = () => { j.querySelector('#c-obra').hidden = s.value !== 'obra'; j.querySelector('#c-outro').hidden = s.value !== 'outro'; };
     },
@@ -181,6 +183,7 @@ export async function registrarAtendimento({ solicitacao = null, obras = [], fin
     </form>`,
     botoes: [{ texto: 'Voltar', valor: null, classe: 'btn-sec' }, { texto: finalizar ? 'Finalizar atendimento' : 'Salvar registro', valor: 'ok' }],
     aoAbrir: (j) => {
+      ativarBuscaObra(j.querySelector('[name=obra_id]'), obras);
       const cont = j.querySelector('#materiais');
       j.querySelector('#add-mat').onclick = () => cont.insertAdjacentHTML('beforeend', linhaMaterial(n++));
       j.addEventListener('click', (e) => { const b = e.target.closest('[data-remover-mat]'); if (b) b.closest('.material-linha').remove(); });

@@ -33,7 +33,7 @@ export async function render(el) {
   const st = { aba: 'expedientes', de: paraISO(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 30)), ate: paraISO(hoje), motorista: '' };
   const [motoristas, obras] = await Promise.all([
     admin ? q(sb.from('perfis').select('id, nome_completo').in('perfil', ['motorista', 'admin']).order('nome_completo')) : [],
-    q(sb.from('obras').select('id, nome').order('nome')),
+    q(sb.from('obras').select('id, nome, codigo_sienge, cliente, endereco, ativa').order('nome')),
   ]);
   const nomeObra = (id) => obras.find((o) => o.id === id)?.nome || '—';
   let dados = [];

@@ -431,4 +431,71 @@ end $$;
 reset role;
 
 \echo ''
+\echo '--- 9. Importação de obras do Sienge'
+select teste.entrar('sol1'); set role authenticated;
+do $$ begin
+  perform teste.erro($q$select public.importar_obras_sienge('a.xlsx', '[{"acao":"cadastrar","codigo":"900","nome":"Obra X"}]')$q$,
+     'não tem permissão', 'solicitante NÃO importa obras do Sienge');
+end $$;
+reset role;
+select teste.entrar('mot'); set role authenticated;
+do $$ begin
+  perform teste.erro($q$select public.importar_obras_sienge('a.xlsx', '[{"acao":"cadastrar","codigo":"900","nome":"Obra X"}]')$q$,
+     'não tem permissão', 'motorista NÃO importa obras do Sienge');
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  perform teste.erro($q$select public.importar_obras_sienge('a.xlsx', '[]')$q$, 'permission denied', 'visitante NÃO importa obras do Sienge');
+end $$;
+reset role;
+select teste.entrar('admin'); set role authenticated;
+do $$
+declare r jsonb; v_aud int; v_aud2 int;
+begin
+  insert into public.obras (nome, responsavel_nome) values ('Residencial Estoril','Engenheiro E');
+  select count(*) into v_aud from public.auditoria where acao = 'importacao_obras_sienge';
+  r := public.importar_obras_sienge('relacao.xlsx', jsonb_build_array(
+    jsonb_build_object('acao','cadastrar','codigo','101','nome','Hospital Santa Clara','cliente','Cliente A','situacao','Em andamento','dados',jsonb_build_object('empresa','Masters','categoria','Obra')),
+    jsonb_build_object('acao','cadastrar','codigo','102','nome','Galpão Norte','situacao','Concluída','ativa',false),
+    jsonb_build_object('acao','cadastrar','codigo','103','nome','Residencial Estoril'),
+    jsonb_build_object('acao','vincular','codigo','55','obra_id',(select id from public.obras where nome='Residencial Estoril'),'cliente','Cliente E'),
+    jsonb_build_object('acao','cadastrar','codigo','12A','nome','Código ruim'),
+    jsonb_build_object('acao','cadastrar','codigo','101','nome','Repetida')));
+  perform teste.ok((r->>'cadastradas')::int = 2 and (r->>'vinculadas')::int = 1 and (r->>'nao_aplicadas')::int = 3,
+    'importação: 2 cadastradas, 1 vinculada, 3 recusadas (nome já usado à mão, código inválido, código repetido)');
+  perform teste.ok((select origem = 'sienge' and responsavel_nome is null and cliente = 'Cliente A' and ativa and dados_sienge->>'empresa' = 'Masters'
+                      from public.obras where codigo_sienge = '101'), 'obra importada entra com dados do Sienge e responsável pendente');
+  perform teste.ok((select not ativa from public.obras where codigo_sienge = '102'), 'obra concluída no Sienge pode entrar inativa');
+  perform teste.ok((select codigo_sienge = '55' and responsavel_nome = 'Engenheiro E' and origem = 'manual' and cliente = 'Cliente E'
+                      from public.obras where nome = 'Residencial Estoril'), 'vincular: obra manual recebe o código sem perder o responsável');
+  perform teste.ok(((r->'resultados'->2->>'motivo') ilike '%vincule%'), 'cadastrar com nome de obra manual é recusado com orientação para vincular');
+  -- atualizar: vazio nunca apaga; sem diferença é informado
+  r := public.importar_obras_sienge('relacao2.xlsx', jsonb_build_array(
+    jsonb_build_object('acao','atualizar','codigo','101','cliente','','situacao','Paralisada','dados',jsonb_build_object('categoria','Reforma')),
+    jsonb_build_object('acao','atualizar','codigo','102','situacao','Concluída'),
+    jsonb_build_object('acao','atualizar','codigo','999','situacao','X')));
+  perform teste.ok((r->>'atualizadas')::int = 1, 'atualizar: só a obra com diferença é alterada');
+  perform teste.ok((select cliente = 'Cliente A' and situacao_sienge = 'Paralisada' and dados_sienge->>'empresa' = 'Masters'
+                      and dados_sienge->>'categoria' = 'Reforma' and ativa from public.obras where codigo_sienge = '101'),
+    'atualizar: campo vazio não apaga, extras somam, status no sistema não muda');
+  perform teste.ok((r->'resultados'->1->>'motivo') = 'Sem diferenças.' and (r->'resultados'->2->>'motivo') ilike '%não encontrada%',
+    'atualizar informa obra sem diferença e código inexistente');
+  select count(*) into v_aud2 from public.auditoria where acao = 'importacao_obras_sienge';
+  perform teste.ok(v_aud2 = v_aud + 2, 'cada importação fica registrada na auditoria');
+  perform teste.ok(exists (select 1 from public.auditoria where tabela = 'obras' and justificativa ilike '%Sienge%relacao.xlsx%'),
+    'cada obra alterada fica na auditoria com o nome do arquivo');
+  -- regras de nome e responsável
+  insert into public.obras (nome, codigo_sienge, origem) values ('Galpão Norte', '104', 'sienge');
+  perform teste.ok(true, 'Sienge pode ter duas obras com o mesmo nome e códigos diferentes');
+  perform teste.erro($q$insert into public.obras (nome, responsavel_nome) values ('galpão norte', 'Fulano de Tal')$q$, 'Já existe uma obra',
+    'obra manual NÃO repete o nome de obra do Sienge');
+  perform teste.erro($q$insert into public.obras (nome) values ('Obra sem responsável')$q$, 'obras_responsavel_obrigatorio',
+    'obra manual continua exigindo responsável');
+  perform teste.erro($q$update public.obras set codigo_sienge = '101' where codigo_sienge = '104'$q$, 'obras_codigo_sienge_unico',
+    'código do Sienge não se repete');
+end $$;
+reset role;
+
+\echo ''
 \echo '=== TODOS OS TESTES DO BANCO PASSARAM ==='

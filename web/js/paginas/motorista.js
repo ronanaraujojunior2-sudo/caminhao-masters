@@ -22,7 +22,7 @@ export async function render(el) {
     try {
       [prog, obras] = await Promise.all([
         q(sb.from('vw_agenda').select('*').eq('caminhao_id', cam.id).gte('data', hoje).lte('data', fim).order('data').order('periodo')),
-        q(sb.from('obras').select('id, nome').eq('ativa', true).order('nome')),
+        q(sb.from('obras').select('id, nome, codigo_sienge, cliente, endereco').eq('ativa', true).order('nome')),
       ]);
       gravarCache(`prog-${cam.id}`, prog); gravarCache('obras-motorista', obras);
       online = true;
@@ -61,7 +61,7 @@ export async function render(el) {
         <div><dt>Atividade</dt><dd>${esc(it.categoria)} — ${esc(it.descricao)}</dd></div>
         <div><dt>Endereço</dt><dd>${mapaLink(it.obra_endereco)}</dd></div>
         <div><dt>Local na obra</dt><dd>${esc(it.local_especifico || '—')}</dd></div>
-        <div><dt>Responsável</dt><dd>${esc(it.obra_responsavel)} · ${telLink(it.obra_telefone)}</dd></div>
+        <div><dt>Responsável</dt><dd>${it.obra_responsavel ? `${esc(it.obra_responsavel)} · ${telLink(it.obra_telefone)}` : 'Não informado'}</dd></div>
         ${it.contato1_nome ? `<div><dt>Contato</dt><dd>${esc(it.contato1_nome)} · ${telLink(it.contato1_telefone)}</dd></div>` : ''}
         ${it.contato2_nome ? `<div><dt>Contato</dt><dd>${esc(it.contato2_nome)} · ${telLink(it.contato2_telefone)}</dd></div>` : ''}
         ${it.observacoes ? `<div><dt>Observações operacionais</dt><dd>${esc(it.observacoes)}</dd></div>` : ''}
@@ -103,7 +103,7 @@ export async function render(el) {
       <section><h2>Próximas atividades</h2>
         ${proximas.length ? proximas.map((x) => `<div class="cartao"><b>${esc(nomeDia(x.data))}, ${fmtData(x.data)} · ${x.periodo === 'manha' ? 'Manhã' : 'Tarde'}</b>
           — ${esc(x.obra_nome)}<br><span class="muted">${esc(x.categoria)}: ${esc(x.descricao)}</span>
-          <details><summary>Endereço e contatos</summary><p>${mapaLink(x.obra_endereco)}<br>${esc(x.obra_responsavel)} · ${telLink(x.obra_telefone)}
+          <details><summary>Endereço e contatos</summary><p>${mapaLink(x.obra_endereco)}<br>${x.obra_responsavel ? `${esc(x.obra_responsavel)} · ${telLink(x.obra_telefone)}` : 'Responsável não informado'}
           ${x.local_especifico ? `<br>Local: ${esc(x.local_especifico)}` : ''}${x.observacoes ? `<br>Obs.: ${esc(x.observacoes)}` : ''}</p></details></div>`).join('')
         : vazio('Nenhuma atividade aprovada nos próximos 14 dias.')}</section>`;
   }

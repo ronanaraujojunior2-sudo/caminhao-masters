@@ -2,6 +2,7 @@
 import { sb, estado, q, ehAdmin, offsetFuso, msgErro } from '../api.js';
 import { esc, opcoes, lerForm, ocupado, aviso, fmtData, nomeDia, vazio } from '../ui.js';
 import * as R from '../lib/regras.js';
+import { ativarBuscaObra } from '../busca-obra.js';
 import { aoMudarAgenda } from '../sync.js';
 
 export async function render(el, params) {
@@ -9,7 +10,7 @@ export async function render(el, params) {
   const off = offsetFuso();
   const admin = ehAdmin();
   const [obras, categorias] = await Promise.all([
-    q(sb.from('obras').select('id, nome, endereco, responsavel_nome').eq('ativa', true).order('nome')),
+    q(sb.from('obras').select('id, nome, codigo_sienge, cliente, endereco, responsavel_nome').eq('ativa', true).order('nome')),
     q(sb.from('categorias').select('id, nome').eq('ativa', true).order('ordem')),
   ]);
   if (!obras.length) { el.innerHTML = `<h1>Solicitar caminhão</h1>${vazio('Nenhuma obra ativa cadastrada. ' + (admin ? 'Cadastre em Cadastros > Obras.' : 'Procure o administrador.'))}`; return; }
@@ -23,7 +24,7 @@ export async function render(el, params) {
       A solicitação reserva o período provisoriamente até a análise do administrador.</div>
     <form id="f" class="cartao" novalidate>
       <div class="linha-campos">
-        <label class="campo"><span>Obra <b class="obr">*</b></span><select name="obra_id" required>${opcoes(obras.map((o) => [o.id, o.nome]), params.obra, 'Selecione a obra')}</select></label>
+        <label class="campo"><span>Obra <b class="obr">*</b></span><select name="obra_id" required>${opcoes(obras.map((o) => [o.id, (o.codigo_sienge ? o.codigo_sienge + ' · ' : '') + o.nome]), params.obra, 'Selecione a obra')}</select></label>
         ${estado.caminhoes.length > 1 ? `<label class="campo"><span>Caminhão <b class="obr">*</b></span><select name="caminhao_id" required>${opcoes(estado.caminhoes.map((c) => [c.id, `${c.nome} · ${c.placa}`]), estado.caminhaoId)}</select></label>` : ''}
         <label class="campo"><span>Solicitante</span><input value="${esc(estado.perfil.nome_completo)}" disabled><small>Preenchido automaticamente pelo seu login.</small></label>
       </div>
@@ -43,6 +44,7 @@ export async function render(el, params) {
     </form>`;
 
   const f = el.querySelector('#f');
+  ativarBuscaObra(f.querySelector('[name=obra_id]'), obras);  // só obras ativas (consulta acima)
   const caixa = el.querySelector('#periodos');
   let ocupados = {};
 

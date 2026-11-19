@@ -42,3 +42,23 @@ Perdeu a senha **e** a chave? Procure o administrador pessoalmente, com document
 - **Documentos:** CRLV, licenciamento, seguro, comprovantes e outros (PDF ou imagem), com validade, alerta e histórico (renovar mantém a versão anterior).
 - **Relatórios:** custo do período, custo mensal, por categoria, acumulado, custo por km, comparação com o período anterior e uso por obra. **Exportar Excel** ou **Exportar PDF** (na janela de impressão, escolha “Salvar como PDF”).
 - **Obras, Caminhões, Usuários, Configurações** (antecedência, materiais obrigatórios, alertas, categorias) e **Auditoria** (somente leitura, com valores anterior e novo).
+
+### Importar Obras do Sienge (administrador)
+1. No Sienge, gere o **Relatório de Obras e Centros de Custo** e exporte em Excel (.xlsx), sem mudar nada no arquivo.
+2. No Caminhão Masters: **Cadastros → Obras → Importar Obras do Sienge → Escolher arquivo**.
+3. Confira a **prévia** (nada é gravado ainda). Ela mostra:
+   - **Novas a cadastrar**: entram com o código e o nome do Sienge. Obras encerradas no Sienge vêm desmarcadas (se marcar, entram inativas). Desmarque centros de custo que não recebem o caminhão (ex.: diretoria, veículos).
+   - **Ligar a obra já cadastrada**: obra cadastrada à mão com o mesmo nome recebe o código do Sienge; responsável, telefones e solicitações continuam iguais.
+   - **A atualizar**: cliente, situação e demais informações do Sienge que mudaram (antes → depois). Nome, responsável e telefones nunca são alterados pela importação.
+   - **Ignoradas**: já cadastradas sem alteração ou desmarcadas por você.
+   - **Com erro**: linhas que não podem ser importadas, com o motivo. Use **Baixar relatório de erros** para corrigir no Sienge.
+4. Clique em **Confirmar importação** e confirme. Ao final aparece o resumo e o botão **Baixar relatório completo**.
+5. As obras novas aparecem com **Responsável pendente**: marque **Só com responsável pendente** na lista e complete em **Editar**.
+
+Regras de segurança: o **código do Sienge** identifica a obra (nunca duplica, nem com duas pessoas importando ao mesmo tempo); nada é apagado; campo vazio no arquivo não apaga dado; solicitações, agendamentos e históricos não são tocados; cada importação fica na **Auditoria** com o nome do arquivo.
+
+## Pesquisa de obras (todos os perfis)
+Em todo lugar em que se escolhe uma obra (nova solicitação, filtros da agenda e das solicitações, registro de atendimento e encerramento de expediente), basta **digitar parte do nome, o código do Sienge, o cliente ou o endereço**. Os resultados aparecem enquanto você digita; escolha com toque, clique ou com as setas e **Enter**. O **×** limpa a escolha. Em novas solicitações só aparecem obras **ativas**.
+
+## Abertura do aplicativo
+Ao abrir o Caminhão Masters, uma animação curta (cerca de 4 segundos) mostra o caminhão Munck colocando a logo da Masters na carroceria, enquanto o sistema carrega. Ela aparece **uma vez por sessão**, pode ser **pulada** com um toque, clique, Esc ou o botão **Pular**, e não aparece para quem ativou **reduzir movimento** nas configurações de acessibilidade do aparelho.

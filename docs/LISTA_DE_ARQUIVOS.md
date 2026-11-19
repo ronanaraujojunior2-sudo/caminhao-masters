@@ -85,6 +85,14 @@
 | `web/js/lib/fila.js` | Fila de sincronização offline |
 | `web/js/lib/regras.js` | Regras da agenda |
 | `web/js/lib/xlsx.js` | Gerador de Excel |
+| `web/js/lib/planilha-leitor.js` | Leitor de .xlsx/.csv sem biblioteca externa |
+| `web/js/lib/obras-sienge.js` | Leitura da relação de obras do Sienge e comparação com o cadastro |
+| `web/js/lib/busca-texto.js` | Busca sem acentos por várias palavras |
+| `web/js/busca-obra.js` | Campo de pesquisa de obras (usado em todos os formulários) |
+| `web/js/abertura.js` | Animação de abertura (caminhão Munck com a logo oficial) |
+| `web/js/paginas/obras-importar.js` | Tela: importar obras do Sienge |
+| `supabase/migrations/20261119000006_obras_sienge.sql` | Banco: campos do Sienge nas obras e função de importação |
+| `tests/fixtures/obras-sienge-teste.xlsx` | Planilha de teste no formato do Sienge (dados fictícios) |
 | `web/js/paginas/agenda.js` | Tela: agenda |
 | `web/js/paginas/auditoria.js` | Tela: auditoria |
 | `web/js/paginas/bloqueios.js` | Tela: bloqueios |

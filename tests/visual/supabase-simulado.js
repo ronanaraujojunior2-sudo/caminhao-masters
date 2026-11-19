@@ -99,7 +99,13 @@ export function createClient() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
     },
     from: (t) => new Consulta(t),
-    rpc: async (fn) => {
+    rpc: async (fn, args) => {
+      if (fn === 'importar_obras_sienge') {
+        window.__ultimaImportacao = args;
+        const n = (a) => args.p_linhas.filter((l) => l.acao === a).length;
+        return { data: { cadastradas: n('cadastrar'), vinculadas: n('vincular'), atualizadas: n('atualizar'), nao_aplicadas: 0,
+          resultados: args.p_linhas.map((l) => ({ codigo: l.codigo, nome: l.nome, acao: l.acao, ok: true })) }, error: null };
+      }
       if (fn === 'resumo_financeiro') return { data: { total: 8420.5, km_rodados: 1830, custo_por_km: 4.6, pendentes: 520, acumulado_geral: 31250,
         por_categoria: [{ categoria: 'abastecimento', total: 5200, qtd: 10 }, { categoria: 'manutencao_preventiva', total: 2100, qtd: 2 }, { categoria: 'pneus', total: 1120.5, qtd: 1 }],
         por_mes: [{ mes: '2026-08', total: 2100 }, { mes: '2026-09', total: 3150 }, { mes: '2026-10', total: 1700 }, { mes: '2026-11', total: 1470.5 }] }, error: null };
