@@ -74,6 +74,7 @@ Cada usuário tem `sessoes_invalidadas_em`. Toda regra de segurança confere se 
 | “Em manutenção” concluída | Mantém o período ocupado; cancelar libera | Histórico fiel do dia |
 | Itens críticos do checklist | Pneus, freios, luzes, gancho, cabos/cintas, comandos hidráulicos, patolas, lança, vazamentos — sempre críticos; demais podem ser marcados como críticos pelo motorista | Servidor recalcula; não confia no aparelho |
 | Abastecimento | Atualiza o KM do caminhão; o valor pago é opcional e apenas informativo (não gera despesa) | Controle financeiro fica no Sienge (ajuste da gestão, 24/11/2026). A tabela antiga de despesas foi preservada no banco, sem acesso pelo sistema |
+| Relatórios | Sem módulo de relatórios: consultas e históricos operacionais ficam nas próprias telas (agenda, solicitações, Diário de Bordo, manutenções, ocorrências) | Ajuste da gestão (24/11/2026): foco exclusivo na gestão operacional |
 | Exclusão de usuário | Conta de acesso apagada; cadastro apagado se não houver registros, ou mantido como “registro histórico” (nome preservado) se houver | Integridade do banco e rastreabilidade das operações |
 | Hospedagem | GitHub Pages | Mesmo padrão do Controle de Ferramentas e Materiais; sem serviço adicional; a segurança fica no Supabase (RLS e funções de servidor), não no sigilo do código |
 | Exportação PDF | Pela impressão do navegador (“Salvar como PDF”) com folha de estilo própria | Sem bibliotecas pesadas, funciona em qualquer aparelho |

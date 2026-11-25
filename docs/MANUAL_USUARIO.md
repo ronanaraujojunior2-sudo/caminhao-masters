@@ -40,7 +40,7 @@ Perdeu a senha **e** a chave? Procure o administrador pessoalmente, com document
 - **Diário de Bordo:** consulta de expedientes, atendimentos, checklists, abastecimentos (com motorista, posto e valor pago, quando informado) e ocorrências, com fotos e exportação Excel.
 - **Ocorrências:** acompanhar e registrar a resolução (o motorista é notificado).
 - **Documentos e vencimentos:** CRLV, licenciamento, seguro, comprovantes e outros (PDF ou imagem), com validade, alerta e histórico (renovar mantém a versão anterior).
-- **Relatórios operacionais:** solicitações (aprovadas, recusadas), atendimentos realizados, KM rodados, litros abastecidos e consumo médio (km/L), manutenções e serviços realizados, ocorrências, utilização por mês e uso do caminhão por obra. Não há relatórios financeiros: esse controle é do Sienge. **Exportar Excel** ou **Exportar PDF** (na janela de impressão, escolha “Salvar como PDF”).
+- **Consultas e históricos:** ficam em cada tela — agenda, solicitações, abastecimentos (no Diário de Bordo), manutenções (aba Histórico), Diário de Bordo e ocorrências. O sistema não tem módulo de relatórios nem financeiro.
 - **Usuários:** filtros **Ativos**, **Inativos** e **Arquivados** (com contadores). Ações por usuário:
   - **Desativar:** bloqueia o acesso; o usuário continua na lista de Inativos.
   - **Arquivar:** bloqueia o acesso e tira o usuário da lista principal (fica em Arquivados).

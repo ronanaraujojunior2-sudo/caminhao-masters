@@ -86,9 +86,7 @@
 | `web/js/lib/xlsx.js` | Gerador de Excel |
 | `web/js/lib/planilha-leitor.js` | Leitor de .xlsx/.csv sem biblioteca externa |
 | `web/js/lib/obras-sienge.js` | Leitura da relação de obras do Sienge e comparação com o cadastro |
-| `web/js/lib/relatorio-operacional.js` | Consolidação do relatório operacional (sem valores financeiros) |
 | `supabase/migrations/20261124000007_ajustes_gestao.sql` | Banco: sem financeiro, abastecimento com valor opcional, arquivar/excluir usuários |
-| `tests/unit/relatorios.test.mjs` | Testes do relatório operacional |
 | `web/js/lib/busca-texto.js` | Busca sem acentos por várias palavras |
 | `web/js/busca-obra.js` | Campo de pesquisa de obras (usado em todos os formulários) |
 | `web/js/abertura.js` | Animação de abertura (caminhão Munck com a logo oficial) |
@@ -115,7 +113,6 @@
 | `web/js/paginas/painel.js` | Tela: painel |
 | `web/js/paginas/primeiro-acesso.js` | Tela: primeiro-acesso |
 | `web/js/paginas/recuperar.js` | Tela: recuperar |
-| `web/js/paginas/relatorios.js` | Tela: relatorios |
 | `web/js/paginas/solicitacoes.js` | Tela: solicitacoes |
 | `web/js/paginas/solicitar.js` | Tela: solicitar |
 | `web/js/paginas/usuarios.js` | Tela: usuarios |

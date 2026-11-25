@@ -19,7 +19,6 @@ const ROTAS = {
   'diario':          { arq: 'diario', perfis: ['admin', 'motorista'] },
   'ocorrencias':     { arq: 'ocorrencias', perfis: ['admin'] },
   'documentos':      { arq: 'documentos', perfis: ['admin', 'motorista'] },
-  'relatorios':      { arq: 'relatorios', perfis: ['admin'] },
   'obras':           { arq: 'obras', perfis: ['admin'] },
   'caminhoes':       { arq: 'caminhoes', perfis: ['admin'] },
   'usuarios':        { arq: 'usuarios', perfis: ['admin'] },
@@ -35,8 +34,8 @@ const APLICATIVO = ['app', 'Aplicativo', [['notificacoes', 'Notificações'], ['
 const MENUS = {
   admin: [
     ['painel', 'Painel geral'], ['agenda', 'Agenda do caminhão'], ['solicitacoes', 'Solicitações'], ['*solicitar', 'Solicitar caminhão'],
-    ['operacao', 'Operação', [['bloqueios', 'Bloqueios'], ['manutencoes', 'Manutenções'], ['diario', 'Diário de Bordo'], ['ocorrencias', 'Ocorrências']]],
-    ['gestao', 'Gestão', [['documentos', 'Documentos e vencimentos'], ['relatorios', 'Relatórios operacionais']]],
+    ['operacao', 'Operação', [['bloqueios', 'Bloqueios'], ['manutencoes', 'Manutenções'], ['diario', 'Diário de Bordo'], ['ocorrencias', 'Ocorrências'],
+      ['documentos', 'Documentos e vencimentos']]],
     ['cadastros', 'Cadastros', [['obras', 'Obras'], ['caminhoes', 'Caminhões'], ['usuarios', 'Usuários']]],
     ['admin', 'Administração', [['configuracoes', 'Configurações'], ['auditoria', 'Auditoria']]],
     APLICATIVO,

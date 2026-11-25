@@ -179,7 +179,7 @@ Cadastre três usuários de teste (um de cada perfil) e use **três navegadores 
 | 10 | Motorista | Desativar modo avião | Em até 1 minuto, o indicador some; admin recebe “Atendimento finalizado” |
 | 11 | Admin | **Validar e concluir** | Período liberado na agenda |
 | 12 | Admin | **Bloqueios** → bloquear um dia com solicitação aprovada | Sistema impede e informa a solicitação em conflito |
-| 13 | Motorista | Tentar abrir `#/usuarios` ou `#/relatorios` | É redirecionado; menus administrativos não aparecem |
+| 13 | Motorista | Tentar abrir `#/usuarios` ou `#/auditoria` | É redirecionado; menus administrativos não aparecem |
 | 14 | Solicitante | **Esqueceu sua senha?** com a chave guardada | Nova senha funciona; nova chave exibida; a chave antiga não funciona mais |
 | 15 | Admin | **Auditoria** | Todas as ações acima aparecem com usuário, data/hora, valores anterior e novo |
 | 16 | Todos | Abrir no celular e **Adicionar à tela inicial** | Ícone instalado; telas legíveis, botões grandes |
@@ -210,7 +210,7 @@ Sem esta etapa, as notificações funcionam no sino do sistema e como aviso do n
 
 **Restaurar** (com apoio de TI): baixar o artefato, descriptografar com `gpg -d arquivo.tgz.gpg > backup.tgz`, extrair e usar `pg_restore` em um projeto novo onde as migrações já foram instaladas.
 
-**Recomendação extra:** uma vez por mês, exporte em Excel as **Solicitações**, o **Relatório operacional** e a **Auditoria** e guarde na pasta de rede da empresa.
+**Recomendação extra:** uma vez por mês, exporte em Excel as **Solicitações** e o **Diário de Bordo** e guarde na pasta de rede da empresa.
 
 ### Manutenção de rotina
 - **Semanal:** conferir o Painel (pendências, ocorrências, alertas).

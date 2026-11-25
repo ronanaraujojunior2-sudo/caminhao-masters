@@ -134,7 +134,7 @@ with sync_playwright() as pw:
     print('ok - modo claro/escuro pelo botão ◐ (preferência salva)')
     for rota, nome in [('#/agenda', '11-admin-agenda-semana'), ('#/solicitacoes', '13-admin-solicitacoes'), ('#/solicitacoes/s4', '14-admin-solicitacao-detalhe'),
                        ('#/solicitar', '15-solicitar'), ('#/bloqueios', '16-bloqueios'), ('#/manutencoes', '17-manutencoes'), ('#/diario', '18-diario'),
-                       ('#/ocorrencias', '19-ocorrencias'), ('#/documentos', '21-documentos'), ('#/relatorios', '22-relatorios'),
+                       ('#/ocorrencias', '19-ocorrencias'), ('#/documentos', '21-documentos'),
                        ('#/obras', '23-obras'), ('#/caminhoes', '24-caminhoes'), ('#/usuarios', '25-usuarios'), ('#/auditoria', '26-auditoria'),
                        ('#/configuracoes', '27-configuracoes'), ('#/notificacoes', '28-notificacoes'), ('#/conta', '29-conta')]:
         ir(p, rota); foto(p, nome)
@@ -171,19 +171,13 @@ with sync_playwright() as pw:
     ir(p, '#/usuarios'); p.click('#novo'); p.wait_for_selector('.janela'); foto(p, '25b-novo-usuario', False); p.click('.janela .fechar')
     # ---- sem módulo financeiro ----
     menu = p.inner_text('.lateral')
-    assert 'Despesas' not in menu and 'Relatórios operacionais' in menu, 'menu ainda mostra Despesas'
+    assert 'Despesas' not in menu and 'Relatórios' not in menu and 'Gestão' not in menu and 'Documentos e vencimentos' in menu, 'menu ainda mostra Despesas/Relatórios'
     ir(p, '#/despesas'); assert '#/painel' in p.url, 'rota de despesas ainda existe'
+    ir(p, '#/relatorios'); assert '#/painel' in p.url, 'rota de relatórios ainda existe'
     ir(p, '#/painel'); pn = p.inner_text('.pn-kpis')
     assert 'Despesa' not in pn and 'R$' not in pn and 'Manutenções programadas' in pn, 'painel ainda tem indicador financeiro'
-    ir(p, '#/relatorios'); p.wait_for_selector('.indicador'); rel = p.inner_text('#conteudo-rel')
-    assert 'R$' not in rel and 'Custo' not in rel and 'custo' not in rel and 'KM rodados' in rel and 'Atendimentos realizados' in rel, 'relatório ainda financeiro: ' + rel[:200]
     assert 'despesas' not in p.evaluate('window.__tabelasLidas || []'), 'alguma tela ainda consulta despesas'
-    with p.expect_download() as dl: p.click('#xlsx')
-    import zipfile
-    z = zipfile.ZipFile(dl.value.path()); xml = ''.join(z.read(n).decode('utf-8') for n in z.namelist() if n.endswith('.xml'))
-    assert 'R$' not in xml and 'Custo' not in xml and 'Despesas' not in xml and 'KM rodados' in xml, 'Excel do relatório tem dados financeiros'
-    foto(p, '22b-relatorio-operacional')
-    print('ok - módulo financeiro retirado: menu, rota, painel, relatório e Excel sem custos nem despesas')
+    print('ok - sem módulo financeiro nem de relatórios: menu, rotas e painel sem custos, despesas ou relatórios')
     # abastecimento: admin vê o valor no histórico; valor não informado aparece como tal
     ir(p, '#/diario'); p.click('[data-aba=abastecimentos]'); p.wait_for_timeout(500)
     hist = p.inner_text('#lista') if p.locator('#lista').count() else p.inner_text('main')
