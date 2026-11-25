@@ -21,11 +21,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publicar:
+  construir:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Conferir que não há chave secreta no site
@@ -40,5 +37,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
+
+  # Etapa separada (padrão recomendado pelo GitHub): só começa depois que o
+  # pacote do site foi registrado, evitando o erro "No artifacts named github-pages".
+  publicar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
