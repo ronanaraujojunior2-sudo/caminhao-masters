@@ -254,6 +254,17 @@ with sync_playwright() as pw:
     p.click('#menu-botao'); p.wait_for_timeout(400); foto(p, '35-menu-celular', False)
     ctx.close()
 
+    # ---------------- CELULAR: ADMINISTRADOR (usuários) ----------------
+    ctx = nav.new_context(**cel)
+    p = preparar(ctx, 'celular-admin-usuarios')
+    entrar(p, 'admin'); ir(p, '#/usuarios'); p.wait_for_selector('#situacoes')
+    n = p.locator('#lista [data-excluir]').count()
+    assert n == 3, 'celular: esperado botão Excluir usuário nos 3 usuários ativos (exceto o próprio admin), achei %d' % n
+    assert p.locator('#lista [data-excluir]').first.is_visible() and p.locator('#lista [data-excluir]').first.inner_text() == 'Excluir usuário'
+    p.locator('tr', has_text='Solicitante Exemplo').scroll_into_view_if_needed(); foto(p, '43-usuarios-celular-excluir', False)
+    print('ok - celular: botão “Excluir usuário” visível nas ações de cada usuário')
+    ctx.close()
+
     # ---------------- CELULAR: SOLICITANTE ----------------
     ctx = nav.new_context(**cel)
     p = preparar(ctx, 'celular-solicitante')

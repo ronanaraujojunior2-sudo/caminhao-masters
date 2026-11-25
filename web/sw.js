@@ -1,6 +1,6 @@
 // Service Worker do Caminhão Masters: funciona offline e recebe notificações push.
 // Ao publicar uma nova versão, aumente o número abaixo.
-const VERSAO = 'cm-v1.5.1';
+const VERSAO = 'cm-v1.5.2';
 const ARQUIVOS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/tema.js', './js/abertura.js', './js/busca-obra.js', './js/lib/busca-texto.js', './js/app.js', './js/api.js', './js/ui.js', './js/sync.js', './js/config.js',
@@ -30,7 +30,9 @@ self.addEventListener('fetch', (e) => {
   const ehApp = url.origin === self.location.origin;
   if (ehApp) {
     // rede primeiro (pega atualizações); sem rede, usa a cópia guardada
-    e.respondWith(fetch(req).then((r) => {
+    // cache: 'no-cache' confere com o servidor a cada carregamento, então uma versão
+    // recém-publicada nunca fica escondida atrás da cópia temporária do navegador.
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then((r) => {
       if (r.ok) { const copia = r.clone(); caches.open(VERSAO).then((c) => c.put(req, copia)); }
       return r;
     }).catch(() => caches.match(req).then((r) => r || caches.match('./index.html'))));

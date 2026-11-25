@@ -141,7 +141,7 @@ function montarLayout() {
         <a href="${inicioDoPerfil()}" class="marca">${LOGO}</a>
         <div class="sistema-nome"><img src="assets/caminhao-munck.svg" alt="" class="marca-produto">Caminhão Masters</div>
         <nav id="menu">${menuHTML()}</nav>
-        <div class="versao">Versão 1.5</div>
+        <div class="versao">Versão 1.5.2</div>
       </aside>
       <div class="lateral-fundo" id="lateral-fundo"></div>
       <main class="principal">
@@ -272,7 +272,22 @@ export async function entrouNoSistema() {
 
 async function iniciar() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW', e));
+    // Atualização automática: quando uma versão nova do sistema é publicada, o service worker
+    // novo assume e a tela recarrega uma única vez com os arquivos novos.
+    const tinhaControlador = !!navigator.serviceWorker.controller;
+    let recarregou = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!tinhaControlador || recarregou) return;
+      recarregou = true;
+      try { sessionStorage.setItem('cm-atualizado', '1'); } catch { /* */ }
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      // confere se há versão nova ao voltar para o aplicativo e a cada 30 minutos
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+      setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
+    }).catch((e) => console.warn('SW', e));
+    try { if (sessionStorage.getItem('cm-atualizado')) { sessionStorage.removeItem('cm-atualizado'); setTimeout(() => aviso('Sistema atualizado para a versão mais recente.'), 1200); } } catch { /* */ }
     navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.link) location.hash = e.data.link; });
   }
   if (configurado) {
