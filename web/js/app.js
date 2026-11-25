@@ -141,7 +141,7 @@ function montarLayout() {
         <a href="${inicioDoPerfil()}" class="marca">${LOGO}</a>
         <div class="sistema-nome"><img src="assets/caminhao-munck.svg" alt="" class="marca-produto">Caminhão Masters</div>
         <nav id="menu">${menuHTML()}</nav>
-        <div class="versao">Versão 1.5.2</div>
+        <div class="versao">Versão 1.5.3</div>
       </aside>
       <div class="lateral-fundo" id="lateral-fundo"></div>
       <main class="principal">

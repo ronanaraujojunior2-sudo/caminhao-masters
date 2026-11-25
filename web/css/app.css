@@ -416,6 +416,7 @@ details>summary{cursor:pointer;min-height:32px}
 /* ---------- Usuários: situações e ações ---------- */
 .pre{white-space:pre-line}
 .acoes-celula{display:flex;flex-wrap:wrap;gap:6px}
+.processando{opacity:.55;pointer-events:none;transition:opacity .2s}
 .abas .contador{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--surf2);color:var(--mute);font-size:12px;font-weight:600;line-height:18px;text-align:center}
 .abas .ativa .contador{background:var(--blue);color:#fff}
 /* ---------- Abertura (caminhão Munck) ---------- */

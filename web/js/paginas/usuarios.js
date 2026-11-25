@@ -32,6 +32,12 @@ export async function render(el) {
     <div class="filtros"><label class="campo"><span>Buscar</span><input id="busca" placeholder="Nome ou usuário"></label></div><div id="lista">${carregando()}</div>`;
   let dados = [];
   let pagina = 0, busca = '', sit = 'ativos';
+  // Enquanto o servidor processa, as ações da lista ficam bloqueadas (evita clique repetido)
+  async function ocupado(fn) {
+    const lista = el.querySelector('#lista');
+    lista.classList.add('processando'); lista.setAttribute('aria-busy', 'true');
+    try { return await fn(); } finally { lista.classList.remove('processando'); lista.removeAttribute('aria-busy'); }
+  }
   const situacao = (u) => (u.arquivado_em || u.excluido_em ? 'arquivados' : u.ativo ? 'ativos' : 'inativos');
   async function carregar(manter) {
     if (!manter) pagina = 0;
@@ -118,13 +124,13 @@ export async function render(el) {
         const u = dados.find((x) => x.id === t.dataset.desativar);
         const just = await pedirTexto({ titulo: `Desativar ${u.nome_completo}`, rotulo: 'Motivo', ajuda: 'O usuário perde o acesso imediatamente e continua na lista de Inativos. O histórico é mantido.', textoOk: 'Desativar', perigo: true });
         if (!just) return;
-        await funcao('usuarios', { acao: 'desativar', usuario_id: u.id, justificativa: just }, true);
+        await ocupado(() => funcao('usuarios', { acao: 'desativar', usuario_id: u.id, justificativa: just }, true));
         aviso('Usuário desativado.'); await carregar();
       }
       if (t.dataset.reativar) {
         const u = dados.find((x) => x.id === t.dataset.reativar);
         if (!(await confirmar(`Reativar ${u.nome_completo} (${u.usuario})? O acesso ao sistema volta a funcionar${u.arquivado_em ? ' e o usuário volta para a lista de Ativos' : ''}.`, { titulo: 'Reativar usuário', textoOk: 'Reativar' }))) return;
-        await funcao('usuarios', { acao: 'ativar', usuario_id: u.id }, true);
+        await ocupado(() => funcao('usuarios', { acao: 'ativar', usuario_id: u.id }, true));
         aviso('Usuário reativado.'); await carregar();
       }
       if (t.dataset.arquivar) {
@@ -132,7 +138,7 @@ export async function render(el) {
         const just = await pedirTexto({ titulo: `Arquivar ${u.nome_completo}`, rotulo: 'Motivo (opcional)', obrigatorio: false,
           ajuda: 'Sai da lista de usuários ativos e perde o acesso. Fica em “Arquivados” e pode ser reativado quando necessário. Nada do histórico é apagado.', textoOk: 'Arquivar' });
         if (just === null) return;
-        await funcao('usuarios', { acao: 'arquivar', usuario_id: u.id, justificativa: just }, true);
+        await ocupado(() => funcao('usuarios', { acao: 'arquivar', usuario_id: u.id, justificativa: just }, true));
         aviso('Usuário arquivado.'); await carregar();
       }
       if (t.dataset.excluir) {
@@ -151,7 +157,8 @@ export async function render(el) {
           validar: (d) => (!d.confirmo ? 'Marque a confirmação para excluir.' : null),
         });
         if (!r) return;
-        const res = await funcao('usuarios', { acao: 'excluir', usuario_id: u.id, justificativa: r.dados.justificativa || '' }, true);
+        aviso(`Excluindo ${u.nome_completo}…`, 'info');
+        const res = await ocupado(() => funcao('usuarios', { acao: 'excluir', usuario_id: u.id, justificativa: r.dados.justificativa || '' }, true));
         await carregar();
         aviso(res.aviso || (res.modo === 'historico'
           ? `${u.nome_completo} foi excluído. Como possui registros no sistema, o nome foi mantido apenas como histórico (veja em Arquivados).`
