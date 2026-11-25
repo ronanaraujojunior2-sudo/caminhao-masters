@@ -2169,3 +2169,8 @@ revoke all on function public.svc_excluir_usuario(uuid, uuid, text) from public,
 grant execute on function public.svc_vinculos_usuario(uuid) to service_role;
 grant execute on function public.svc_arquivar_usuario(uuid, uuid, boolean, text) to service_role;
 grant execute on function public.svc_excluir_usuario(uuid, uuid, text) to service_role;
+
+-- >>> 20261124000008_revogar_gatilho.sql
+-- CAMINHÃO MASTERS — Migração 8: a função de gatilho que protege o último
+-- administrador não deve ser chamável pela API (alerta do Supabase).
+revoke all on function public.trg_perfis_exclusao() from public, anon, authenticated;
