@@ -26,22 +26,27 @@ Perdeu a senha **e** a chave? Procure o administrador pessoalmente, com document
 - **Iniciar expediente:** informe o KM inicial e faça o **checklist de abertura** (conforme / com irregularidade / não se aplica). O **checklist do Munck** é opcional. Irregularidades em itens críticos alertam o administrador.
 - **Iniciar atendimento** ao chegar à obra e **Finalizar atendimento** ao terminar: informe horários, KM, materiais (previsto × entregue — divergências pedem explicação), recebedor, confirmação de recebimento, observações e fotos.
   - Finalizar **não libera** o caminhão para outra reserva: o administrador valida.
-- **Abastecimento**, **Ocorrência** (avaria, acidente, problema de transporte, dano, impedimento de acesso, outros) e **Despesa emergencial** (aguarda aprovação).
+- **Abastecimento:** data e hora, quilometragem, litros, posto, **valor pago (opcional)**, foto do comprovante (opcional) e observações (opcional). Fica registrado com o nome do motorista, o caminhão e a data. O valor é só informação do registro: os controles financeiros ficam no Sienge.
+- **Ocorrência** (avaria, acidente, problema de transporte, dano, impedimento de acesso, outros).
 - **Encerrar expediente:** KM final, checklist de encerramento, condições gerais, onde o caminhão ficou (Estacionamento Masters, obra ou outro local), observações e fotos.
 - **Sem internet?** Continue registrando normalmente. O topo mostra “⟳ pendente(s) de sincronização”; quando a conexão voltar, o envio é automático. Toque no aviso para ver os itens.
 - **Diário de Bordo** e **Documentos** (ex.: CRLV liberado pelo administrador) ficam no menu.
 
 ## Perfil ADMINISTRADOR
-- **Painel geral:** pendências de aprovação, esclarecimentos, atendimentos finalizados para validar, períodos livres, ocorrências, despesas pendentes, alertas de manutenção e documentos, e a agenda da semana.
+- **Painel geral:** pendências de aprovação, esclarecimentos, atendimentos finalizados para validar, períodos livres, ocorrências, manutenções programadas, alertas de manutenção e documentos, e a agenda da semana.
 - **Solicitações:** abra uma solicitação para **Aprovar** (com prioridade), **Recusar** (justificativa obrigatória), **Solicitar esclarecimentos**, **Cancelar** (motivo obrigatório; notifica o solicitante e libera o período), **Concluir** (libera o período) e **Definir prioridade**. Exportação para Excel.
 - **Bloqueios:** manhã, tarde ou dia inteiro, sempre com motivo. Não é possível bloquear um período já reservado.
-- **Manutenções:** programar manutenção preventiva/corretiva, lavagem, borracharia, revisão, abastecimento ou outros serviços (o caminhão fica indisponível). Ao **concluir**, informe KM e valor (gera despesa). **Planos preventivos** por data e/ou KM com alerta de vencimento.
-- **Diário de Bordo:** consulta de expedientes, atendimentos, checklists, abastecimentos e ocorrências, com fotos e exportação Excel.
+- **Manutenções:** programar manutenção preventiva/corretiva, lavagem, borracharia, revisão, abastecimento ou outros serviços (o caminhão fica indisponível). Ao **concluir**, informe o KM, a oficina/prestador e o serviço realizado (fica no histórico). **Planos preventivos** por data e/ou KM com alerta de vencimento.
+- **Diário de Bordo:** consulta de expedientes, atendimentos, checklists, abastecimentos (com motorista, posto e valor pago, quando informado) e ocorrências, com fotos e exportação Excel.
 - **Ocorrências:** acompanhar e registrar a resolução (o motorista é notificado).
-- **Despesas:** aprovar/recusar as do motorista e lançar despesas (abastecimento, manutenção, lavagem, borracharia, revisão, pneus, multas, emergenciais, recorrentes, outros). Só as **aprovadas** entram no total oficial.
-- **Documentos:** CRLV, licenciamento, seguro, comprovantes e outros (PDF ou imagem), com validade, alerta e histórico (renovar mantém a versão anterior).
-- **Relatórios:** custo do período, custo mensal, por categoria, acumulado, custo por km, comparação com o período anterior e uso por obra. **Exportar Excel** ou **Exportar PDF** (na janela de impressão, escolha “Salvar como PDF”).
-- **Obras, Caminhões, Usuários, Configurações** (antecedência, materiais obrigatórios, alertas, categorias) e **Auditoria** (somente leitura, com valores anterior e novo).
+- **Documentos e vencimentos:** CRLV, licenciamento, seguro, comprovantes e outros (PDF ou imagem), com validade, alerta e histórico (renovar mantém a versão anterior).
+- **Relatórios operacionais:** solicitações (aprovadas, recusadas), atendimentos realizados, KM rodados, litros abastecidos e consumo médio (km/L), manutenções e serviços realizados, ocorrências, utilização por mês e uso do caminhão por obra. Não há relatórios financeiros: esse controle é do Sienge. **Exportar Excel** ou **Exportar PDF** (na janela de impressão, escolha “Salvar como PDF”).
+- **Usuários:** filtros **Ativos**, **Inativos** e **Arquivados** (com contadores). Ações por usuário:
+  - **Desativar:** bloqueia o acesso; o usuário continua na lista de Inativos.
+  - **Arquivar:** bloqueia o acesso e tira o usuário da lista principal (fica em Arquivados).
+  - **Reativar:** devolve o acesso a um usuário desativado ou arquivado.
+  - **Excluir usuário:** abre uma confirmação com nome, usuário e perfil. Apaga a conta de acesso (senha, chave de recuperação e notificações). Se o usuário tiver solicitações, agendamentos, abastecimentos, atendimentos ou outros registros, **nada disso é apagado**: o nome continua identificado nos registros antigos e o cadastro aparece em Arquivados como **“Excluído — só histórico”**, sem ações. Sem nenhum registro, o cadastro é apagado por completo. O nome de usuário fica livre para um novo cadastro. Você não pode excluir a si mesmo nem o último administrador ativo. Tudo fica na Auditoria.
+- **Obras, Caminhões, Configurações** (antecedência, materiais obrigatórios, alertas, categorias) e **Auditoria** (somente leitura, com valores anterior e novo).
 
 ### Importar Obras do Sienge (administrador)
 1. No Sienge, gere o **Relatório de Obras e Centros de Custo** e exporte em Excel (.xlsx), sem mudar nada no arquivo.

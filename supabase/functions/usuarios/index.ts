@@ -158,6 +158,16 @@ Deno.serve(async (req) => {
       const just = String(b.justificativa ?? "").trim();
       if (!ativo && just.length < 3) throw new Erro(400, "Informe o motivo da desativação.");
       if (b.usuario_id === ator && !ativo) throw new Erro(400, "Você não pode desativar o próprio acesso.");
+      const { data: alvo } = await admin.from("perfis").select("id, arquivado_em, excluido_em").eq("id", b.usuario_id).maybeSingle();
+      if (!alvo) throw new Erro(404, "Usuário não encontrado.");
+      if (alvo.excluido_em) throw new Erro(400, "Este usuário foi excluído e não pode ser reativado.");
+      if (ativo && alvo.arquivado_em) {
+        // Reativar um usuário arquivado: tira do arquivo e devolve o acesso
+        const { error } = await admin.rpc("svc_arquivar_usuario", { p_alvo: alvo.id, p_ator: ator, p_arquivar: false, p_justificativa: just || null });
+        if (error) throw new Erro(400, error.message);
+        await admin.auth.admin.updateUserById(alvo.id, { ban_duration: "none" });
+        return resp(200, { ok: true });
+      }
       const { error } = await admin.from("perfis").update({ ativo }).eq("id", b.usuario_id);
       if (error) throw new Erro(400, error.message);
       await admin.auth.admin.updateUserById(b.usuario_id, { ban_duration: ativo ? "none" : "876000h" });
@@ -167,6 +177,37 @@ Deno.serve(async (req) => {
         p_registro: b.usuario_id, p_justificativa: just || null,
       });
       return resp(200, { ok: true });
+    }
+
+    if (b.acao === "arquivar") {
+      // Arquivar: sai da lista principal e perde o acesso (pode ser reativado depois)
+      const just = String(b.justificativa ?? "").trim();
+      const { error } = await admin.rpc("svc_arquivar_usuario", { p_alvo: b.usuario_id, p_ator: ator, p_arquivar: true, p_justificativa: just || null });
+      if (error) throw new Erro(400, error.message);
+      await admin.auth.admin.updateUserById(b.usuario_id, { ban_duration: "876000h" });
+      return resp(200, { ok: true });
+    }
+
+    if (b.acao === "excluir") {
+      // Excluir: o banco decide entre apagar o cadastro (sem histórico) ou mantê-lo como
+      // registro histórico (com histórico). Em ambos os casos a conta de acesso é apagada.
+      const just = String(b.justificativa ?? "").trim();
+      const { data: r, error } = await admin.rpc("svc_excluir_usuario", { p_alvo: b.usuario_id, p_ator: ator, p_justificativa: just || null });
+      if (error) {
+        // Já excluído antes (ex.: falha de rede ao apagar a conta): só conclui a remoção da conta de acesso.
+        if (/já foi excluído/.test(error.message)) {
+          await admin.auth.admin.deleteUser(b.usuario_id).catch(() => {});
+          return resp(200, { ok: true, modo: "historico" });
+        }
+        throw new Erro(400, error.message);
+      }
+      const { error: errAuth } = await admin.auth.admin.deleteUser(b.usuario_id);
+      if (errAuth && !/not.?found/i.test(errAuth.message)) {
+        // O cadastro já não permite acesso; a conta será apagada numa nova tentativa.
+        console.error("Falha ao apagar a conta de acesso:", errAuth.message);
+        return resp(200, { ok: true, ...r, aviso: "Cadastro excluído, mas a conta de acesso não pôde ser apagada agora. O acesso já está bloqueado." });
+      }
+      return resp(200, { ok: true, ...r });
     }
 
     return resp(400, { erro: "Ação inválida." });

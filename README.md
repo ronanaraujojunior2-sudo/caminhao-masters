@@ -3,7 +3,8 @@
 Sistema web (PWA) para **agendamento e gestão operacional do caminhão Munck da Masters Engenharia**.
 A **agenda** é o centro do sistema: solicitações por período (manhã/tarde), aprovação administrativa,
 proteção contra conflitos no banco de dados e atualização em tempo real. Complementam: Diário de Bordo
-(com funcionamento offline), checklists, manutenção, documentos, despesas, relatórios, notificações e auditoria.
+(com funcionamento offline), checklists, abastecimentos, manutenção, documentos e vencimentos, relatórios operacionais, notificações e auditoria.
+Controles financeiros ficam no Sienge (o sistema não tem módulo financeiro).
 
 ## Comece por aqui
 | Documento | Para quem |

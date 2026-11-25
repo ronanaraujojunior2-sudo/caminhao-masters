@@ -4,7 +4,7 @@ import { esc, fmtDataHora, opcoes, carregando, vazio, janela, baixarArquivo, rot
 import { criarXLSX } from '../lib/xlsx.js';
 import { paraISO } from '../lib/regras.js';
 
-const TABELAS = ['solicitacoes', 'bloqueios', 'atividades_operacionais', 'perfis', 'obras', 'caminhoes', 'categorias', 'configuracoes', 'despesas',
+const TABELAS = ['solicitacoes', 'bloqueios', 'atividades_operacionais', 'perfis', 'obras', 'caminhoes', 'categorias', 'configuracoes',
   'documentos', 'planos_manutencao', 'expedientes', 'checklists', 'atendimentos', 'abastecimentos', 'ocorrencias', 'anexos'];
 const ACOES = [['insert', 'Inclusão'], ['update', 'Alteração'], ['delete', 'Exclusão'], ['login', 'Login'], ['primeiro_acesso', 'Primeiro acesso'],
   ['recuperacao_senha', 'Recuperação de senha'], ['alteracao_senha', 'Alteração de senha'], ['cadastro_usuario', 'Cadastro de usuário'],

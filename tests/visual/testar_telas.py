@@ -23,10 +23,18 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 URL = 'http://127.0.0.1:8765/index.html'
 
 erros = []
+chamadas = []
+def funcao_simulada(route):
+    import json as _j
+    corpo = _j.loads(route.request.post_data or '{}'); chamadas.append(corpo)
+    r = {'ok': True, 'modo': 'historico'} if corpo.get('acao') == 'excluir' else {'ok': True}
+    route.fulfill(status=200, content_type='application/json', body=_j.dumps(r))
+
 def preparar(ctx, nome, abertura=False):
     # a animação de abertura aparece uma vez por sessão; nos testes de telas ela é marcada como já vista
     if not abertura: ctx.add_init_script("sessionStorage.setItem('cm-abertura-vista', '1')")
     ctx.route('**/js/config.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=CONFIG))
+    ctx.route('https://simulado.supabase.co/functions/v1/usuarios', funcao_simulada)
     ctx.route('https://cdn.jsdelivr.net/**', lambda r: r.fulfill(status=200, content_type='application/javascript', body=SIMULADO))
     p = ctx.new_page()
     p.on('pageerror', lambda e: erros.append(f'[{nome}] ERRO JS: {e}'))
@@ -126,7 +134,7 @@ with sync_playwright() as pw:
     print('ok - modo claro/escuro pelo botão ◐ (preferência salva)')
     for rota, nome in [('#/agenda', '11-admin-agenda-semana'), ('#/solicitacoes', '13-admin-solicitacoes'), ('#/solicitacoes/s4', '14-admin-solicitacao-detalhe'),
                        ('#/solicitar', '15-solicitar'), ('#/bloqueios', '16-bloqueios'), ('#/manutencoes', '17-manutencoes'), ('#/diario', '18-diario'),
-                       ('#/ocorrencias', '19-ocorrencias'), ('#/despesas', '20-despesas'), ('#/documentos', '21-documentos'), ('#/relatorios', '22-relatorios'),
+                       ('#/ocorrencias', '19-ocorrencias'), ('#/documentos', '21-documentos'), ('#/relatorios', '22-relatorios'),
                        ('#/obras', '23-obras'), ('#/caminhoes', '24-caminhoes'), ('#/usuarios', '25-usuarios'), ('#/auditoria', '26-auditoria'),
                        ('#/configuracoes', '27-configuracoes'), ('#/notificacoes', '28-notificacoes'), ('#/conta', '29-conta')]:
         ir(p, rota); foto(p, nome)
@@ -161,6 +169,63 @@ with sync_playwright() as pw:
     assert p.evaluate("document.querySelector('#f-obra').value") != '', 'filtro de obra por pesquisa falhou'
     print('ok - pesquisa de obras também nos filtros de solicitações')
     ir(p, '#/usuarios'); p.click('#novo'); p.wait_for_selector('.janela'); foto(p, '25b-novo-usuario', False); p.click('.janela .fechar')
+    # ---- sem módulo financeiro ----
+    menu = p.inner_text('.lateral')
+    assert 'Despesas' not in menu and 'Relatórios operacionais' in menu, 'menu ainda mostra Despesas'
+    ir(p, '#/despesas'); assert '#/painel' in p.url, 'rota de despesas ainda existe'
+    ir(p, '#/painel'); pn = p.inner_text('.pn-kpis')
+    assert 'Despesa' not in pn and 'R$' not in pn and 'Manutenções programadas' in pn, 'painel ainda tem indicador financeiro'
+    ir(p, '#/relatorios'); p.wait_for_selector('.indicador'); rel = p.inner_text('#conteudo-rel')
+    assert 'R$' not in rel and 'Custo' not in rel and 'custo' not in rel and 'KM rodados' in rel and 'Atendimentos realizados' in rel, 'relatório ainda financeiro: ' + rel[:200]
+    assert 'despesas' not in p.evaluate('window.__tabelasLidas || []'), 'alguma tela ainda consulta despesas'
+    with p.expect_download() as dl: p.click('#xlsx')
+    import zipfile
+    z = zipfile.ZipFile(dl.value.path()); xml = ''.join(z.read(n).decode('utf-8') for n in z.namelist() if n.endswith('.xml'))
+    assert 'R$' not in xml and 'Custo' not in xml and 'Despesas' not in xml and 'KM rodados' in xml, 'Excel do relatório tem dados financeiros'
+    foto(p, '22b-relatorio-operacional')
+    print('ok - módulo financeiro retirado: menu, rota, painel, relatório e Excel sem custos nem despesas')
+    # abastecimento: admin vê o valor no histórico; valor não informado aparece como tal
+    ir(p, '#/diario'); p.click('[data-aba=abastecimentos]'); p.wait_for_timeout(500)
+    hist = p.inner_text('#lista') if p.locator('#lista').count() else p.inner_text('main')
+    assert '412,50' in hist and 'não informado' in hist and 'Motorista Exemplo' in hist, 'histórico de abastecimentos sem valor/motorista: ' + hist[:300]
+    foto(p, '17b-historico-abastecimentos')
+    print('ok - histórico de abastecimentos mostra motorista e valor pago (ou “não informado”)')
+    # ---- usuários: filtros e ações ----
+    ir(p, '#/usuarios'); p.wait_for_selector('#situacoes')
+    nomes = p.inner_text('#lista')
+    assert 'Administrador Exemplo' in nomes and 'Funcionário Desativado' not in nomes and 'Funcionário Arquivado' not in nomes, 'lista principal deveria ter só ativos'
+    assert p.inner_text('[data-n=ativos]') == '4' and p.inner_text('[data-n=inativos]') == '1' and p.inner_text('[data-n=arquivados]') == '2', 'contadores errados'
+    p.click('[data-sit=inativos]'); p.wait_for_timeout(200); assert 'Funcionário Desativado' in p.inner_text('#lista')
+    p.click('[data-sit=arquivados]'); p.wait_for_timeout(200); arq = p.inner_text('#lista')
+    assert 'Funcionário Arquivado' in arq and 'Ex-motorista Histórico' in arq and 'ex.motorista' in arq and 'Excluído' in arq, 'arquivados/excluídos não listados'
+    linha_exc = p.locator('tr', has_text='Ex-motorista Histórico')
+    assert linha_exc.locator('button').count() == 0, 'registro histórico de excluído não deve ter ações'
+    foto(p, '25c-usuarios-arquivados')
+    print('ok - usuários: filtros Ativos/Inativos/Arquivados com contadores; excluído aparece só como histórico')
+    p.click('[data-sit=ativos]'); p.wait_for_timeout(200)
+    assert p.locator('tr', has_text='Administrador Exemplo').locator('[data-excluir]').count() == 0, 'admin não pode se excluir pela tela'
+    linha = p.locator('tr', has_text='Novo Funcionário')
+    assert linha.locator('text=Excluir usuário').count() == 1 and linha.locator('text=Arquivar').count() == 1 and linha.locator('text=Desativar').count() == 1
+    linha.locator('[data-excluir]').click(); p.wait_for_selector('.janela')
+    jt = p.inner_text('.janela')
+    assert 'Novo Funcionário' in jt and 'novo.func' in jt and 'NÃO são apagados' in jt, 'confirmação de exclusão não identifica o usuário'
+    foto(p, '25d-excluir-usuario', False)
+    p.click('.janela footer .btn-perigo'); p.wait_for_timeout(200)
+    assert p.locator('.janela').count() == 1 and p.inner_text('.janela-erro').strip() and len(chamadas) == 0, 'exclusão sem confirmar deveria ser bloqueada'
+    p.check('.janela input[name=confirmo]'); p.fill('.janela input[name=justificativa]', 'Cadastro duplicado')
+    p.click('.janela footer .btn-perigo'); p.wait_for_selector('.janela', state='detached')
+    assert chamadas[-1] == {'acao': 'excluir', 'usuario_id': 'u4', 'justificativa': 'Cadastro duplicado'}, 'chamada de exclusão incorreta: %s' % chamadas[-1]
+    p.wait_for_timeout(300); assert 'foi excluído' in p.inner_text('#avisos') if p.locator('#avisos').count() else True
+    print('ok - Excluir usuário: confirmação com nome, exige marcar, chama o servidor e atualiza a lista')
+    p.click('[data-sit=inativos]'); p.wait_for_timeout(200)
+    p.locator('tr', has_text='Funcionário Desativado').locator('[data-arquivar]').click(); p.wait_for_selector('.janela')
+    p.click('.janela footer .btn-pri'); p.wait_for_selector('.janela', state='detached')
+    assert chamadas[-1]['acao'] == 'arquivar' and chamadas[-1]['usuario_id'] == 'u5', 'arquivar incorreto'
+    p.click('[data-sit=arquivados]'); p.wait_for_timeout(200)
+    p.locator('tr', has_text='Funcionário Arquivado').locator('[data-reativar]').click(); p.wait_for_selector('.janela')
+    p.click('.janela footer .btn-pri'); p.wait_for_selector('.janela', state='detached')
+    assert chamadas[-1] == {'acao': 'ativar', 'usuario_id': 'u6'}, 'reativar incorreto: %s' % chamadas[-1]
+    print('ok - Arquivar e Reativar chamam o servidor com o usuário certo')
     ctx.close()
 
     # ---------------- CELULAR: MOTORISTA ----------------
@@ -178,6 +243,19 @@ with sync_playwright() as pw:
     assert 'checklist' in p.inner_text('.janela-erro').lower(), 'checklist incompleto deveria ser recusado'
     print('ok - checklist de abertura exige todos os itens'); p.click('.janela .fechar')
     p.click('[data-finalizar]'); p.wait_for_selector('.janela'); foto(p, '33-motorista-finalizar-atendimento'); p.click('.janela .fechar')
+    assert 'Despesa' not in p.inner_text('main'), 'motorista ainda vê Despesa emergencial'
+    ir(p, '#/diario'); assert 'Despesa' not in p.inner_text('main'), 'Diário de Bordo ainda tem Despesa emergencial'
+    p.click('[data-novo=abastecimento]'); p.wait_for_selector('.janela')
+    jt = p.inner_text('.janela')
+    for campo in ['Data e hora', 'Quilometragem', 'Litros abastecidos', 'Posto de combustível', 'Valor total pago', 'Foto do comprovante', 'Observações']:
+        assert campo in jt, 'campo ausente no abastecimento: ' + campo
+    assert p.locator('.janela input[name=valor]').get_attribute('required') is None, 'valor deveria ser opcional'
+    foto(p, '36-abastecimento-celular', False)
+    p.fill('.janela input[name=litros]', '45,5'); p.click('.janela footer .btn-pri'); p.wait_for_timeout(200)
+    assert p.locator('.janela').count() == 1 and p.inner_text('.janela-erro').strip() and p.locator('.janela input[name=posto]:invalid').count() == 1, 'posto deveria ser obrigatório'
+    p.fill('.janela input[name=posto]', 'Posto Teste'); p.fill('.janela textarea[name=observacoes]', 'Sem comprovante')
+    p.click('.janela footer .btn-pri'); p.wait_for_selector('.janela', state='detached', timeout=5000)
+    print('ok - motorista registra abastecimento sem valor (opcional); posto obrigatório; sem “Despesa emergencial”')
     ir(p, '#/agenda'); foto(p, '34-motorista-agenda-celular')
     p.click('#menu-botao'); p.wait_for_timeout(400); foto(p, '35-menu-celular', False)
     ctx.close()

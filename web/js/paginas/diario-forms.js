@@ -248,16 +248,20 @@ export async function registrarAbastecimento(aoConcluir) {
     titulo: 'Registrar abastecimento',
     corpo: `<form><div class="linha-campos">
       <label class="campo"><span>Data e hora <b class="obr">*</b></span><input type="datetime-local" name="data_hora" required value="${paraLocalInput()}"></label>
-      <label class="campo"><span>KM <b class="obr">*</b></span><input name="km" inputmode="decimal" required value="${cam?.km_atual || ''}"></label>
-      <label class="campo"><span>Litros <b class="obr">*</b></span><input name="litros" inputmode="decimal" required></label>
-      <label class="campo"><span>Valor total (R$) <b class="obr">*</b></span><input name="valor" inputmode="decimal" required></label></div>
-      <label class="campo"><span>Posto</span><input name="posto" maxlength="120"></label>
-      ${campoFotos('fotos', 'Foto do comprovante')}
-      <p class="muted"><small>O valor entra como despesa e aguarda aprovação do administrador.</small></p></form>`,
+      <label class="campo"><span>Quilometragem (KM) <b class="obr">*</b></span><input name="km" inputmode="decimal" required value="${cam?.km_atual || ''}"></label>
+      <label class="campo"><span>Litros abastecidos <b class="obr">*</b></span><input name="litros" inputmode="decimal" required></label></div>
+      <div class="linha-campos">
+      <label class="campo"><span>Posto de combustível <b class="obr">*</b></span><input name="posto" required minlength="2" maxlength="120" autocomplete="off"></label>
+      <label class="campo"><span>Valor total pago (R$) <small>(opcional)</small></span><input name="valor" inputmode="decimal" placeholder="Ex.: 520,00"></label></div>
+      ${campoFotos('fotos', 'Foto do comprovante (opcional)')}
+      <label class="campo"><span>Observações <small>(opcional)</small></span><textarea name="observacoes" rows="2" maxlength="1000"></textarea></label>
+      <p class="muted"><small>Fica registrado com o seu nome, o caminhão e a data. O valor é apenas informativo: os controles financeiros ficam no Sienge.</small></p></form>`,
     botoes: [{ texto: 'Voltar', valor: null, classe: 'btn-sec' }, { texto: 'Salvar', valor: 'ok' }],
     validar: (d) => {
-      if (!(num(d.litros) > 0)) return 'Informe os litros.';
-      if (!(num(d.valor) >= 0)) return 'Informe o valor.';
+      if (!(num(d.km) >= 0)) return 'Informe a quilometragem.';
+      if (!(num(d.litros) > 0)) return 'Informe os litros abastecidos.';
+      if ((d.posto || '').trim().length < 2) return 'Informe o nome do posto.';
+      if (d.valor && !(num(d.valor) >= 0)) return 'Valor inválido. Deixe vazio se não quiser informar.';
       if (num(d.km) < Number(cam?.km_atual || 0) - 1) return `KM menor que o último registrado (${fmtNum(cam.km_atual)}). Confira.`;
       return null;
     },
@@ -265,7 +269,8 @@ export async function registrarAbastecimento(aoConcluir) {
   if (!r) return;
   const d = r.dados;
   const ab = { id: novoId(), caminhao_id: cam.id, expediente_id: expedienteAberto()?.id || null, motorista_id: estado.usuario.id,
-    data_hora: deLocalInput(d.data_hora), km: num(d.km), litros: num(d.litros), valor: num(d.valor), posto: d.posto || null, registrado_offline: !navigator.onLine };
+    data_hora: deLocalInput(d.data_hora), km: num(d.km), litros: num(d.litros), valor: d.valor ? num(d.valor) : null,
+    posto: d.posto.trim(), observacoes: (d.observacoes || '').trim() || null, registrado_offline: !navigator.onLine };
   await registrar({ tipo: 'insert', tabela: 'abastecimentos', dados: ab, rotulo: 'Abastecimento' });
   await registrarFotos('abastecimento', ab.id, d.fotos);
   aviseOffline('Abastecimento registrado.');
@@ -295,31 +300,5 @@ export async function registrarOcorrencia(aoConcluir) {
   await registrar({ tipo: 'insert', tabela: 'ocorrencias', dados: oc, rotulo: 'Ocorrência' });
   await registrarFotos('ocorrencia', oc.id, d.fotos);
   aviseOffline('Ocorrência registrada. O administrador será notificado.');
-  aoConcluir?.();
-}
-
-export async function registrarDespesa(aoConcluir) {
-  const cam = caminhaoAtual();
-  const r = await janela({
-    titulo: 'Despesa emergencial',
-    corpo: `<form>
-      <div class="alerta alerta-info">Use somente para gastos emergenciais. A despesa <b>aguarda aprovação</b> do administrador antes de entrar no total oficial.</div>
-      <label class="campo"><span>Tipo <b class="obr">*</b></span><select name="categoria" required>${opcoes([['emergencial', 'Emergencial'], ['borracharia', 'Borracharia'], ['pneus', 'Pneus'], ['lavagem', 'Lavagem'], ['outros', 'Outros']], 'emergencial')}</select></label>
-      <label class="campo"><span>Descrição <b class="obr">*</b></span><input name="descricao" required maxlength="300"></label>
-      <div class="linha-campos">
-        <label class="campo"><span>Valor (R$) <b class="obr">*</b></span><input name="valor" inputmode="decimal" required></label>
-        <label class="campo"><span>Data <b class="obr">*</b></span><input type="date" name="data" required value="${paraLocalInput().slice(0, 10)}"></label>
-        <label class="campo"><span>Fornecedor</span><input name="fornecedor" maxlength="120"></label></div>
-      ${campoFotos('fotos', 'Foto do comprovante')}</form>`,
-    botoes: [{ texto: 'Voltar', valor: null, classe: 'btn-sec' }, { texto: 'Enviar para aprovação', valor: 'ok' }],
-    validar: (d) => (!(num(d.valor) > 0) ? 'Informe o valor.' : !d.descricao ? 'Descreva a despesa.' : null),
-  });
-  if (!r) return;
-  const d = r.dados;
-  const de = { id: novoId(), caminhao_id: cam.id, categoria: d.categoria, descricao: d.descricao, valor: num(d.valor), data: d.data,
-    fornecedor: d.fornecedor || null, status: 'pendente', origem: 'motorista', lancado_por: estado.usuario.id, km: cam.km_atual || null };
-  await registrar({ tipo: 'insert', tabela: 'despesas', dados: de, rotulo: 'Despesa emergencial' });
-  await registrarFotos('despesa', de.id, d.fotos);
-  aviseOffline('Despesa enviada para aprovação.');
   aoConcluir?.();
 }

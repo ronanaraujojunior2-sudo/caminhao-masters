@@ -4,7 +4,7 @@ import { esc, fmtData, fmtDataHora, fmtNum, nomeDia, badgeSituacao, badgePriorid
 import * as R from '../lib/regras.js';
 import { aoMudarAgenda, registrar, fila } from '../sync.js';
 import { expedienteAberto, guardarExpedienteAberto, iniciarExpediente, encerrarExpediente, registrarAtendimento,
-  registrarAbastecimento, registrarOcorrencia, registrarDespesa } from './diario-forms.js';
+  registrarAbastecimento, registrarOcorrencia } from './diario-forms.js';
 
 export async function render(el) {
   const cam = caminhaoAtual();
@@ -90,7 +90,6 @@ export async function render(el) {
             <button class="btn btn-pri btn-grande" data-acao="atendimento">Registrar atendimento</button>
             <button class="btn btn-sec btn-grande" data-acao="abastecimento">Abastecimento</button>
             <button class="btn btn-sec btn-grande" data-acao="ocorrencia">Ocorrência</button>
-            <button class="btn btn-sec btn-grande" data-acao="despesa">Despesa emergencial</button>
             <button class="btn btn-dest btn-grande" data-acao="encerrar">Encerrar expediente</button>
           </div>`
         : `<p>Nenhum expediente aberto. Ao iniciar, informe o KM inicial e faça o checklist de abertura.</p>
@@ -117,7 +116,6 @@ export async function render(el) {
     if (b.dataset.acao === 'atendimento') return registrarAtendimento({ obras, aoConcluir: recarregar });
     if (b.dataset.acao === 'abastecimento') return registrarAbastecimento(recarregar);
     if (b.dataset.acao === 'ocorrencia') return registrarOcorrencia(recarregar);
-    if (b.dataset.acao === 'despesa') return registrarDespesa(recarregar);
     if (b.dataset.iniciar) {
       const it = prog.find((x) => x.id === b.dataset.iniciar);
       if (!expedienteAberto() && !(await confirmar('Você ainda não iniciou o expediente (KM e checklist). Deseja iniciar o atendimento mesmo assim?'))) return;

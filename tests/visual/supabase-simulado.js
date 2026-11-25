@@ -5,6 +5,7 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0
 const seg = new Date(hoje); seg.setDate(hoje.getDate() - ((hoje.getDay() + 6) % 7));
 const dia = (n) => { const d = new Date(seg); d.setDate(seg.getDate() + n); return iso(d); };
 const HOJE = iso(hoje);
+const HOJE_10H = `${HOJE}T10:00:00-04:00`; // registros com data e hora no fuso de Manaus
 
 const U = { admin: '00000000-0000-4000-8000-000000000001', sol: '00000000-0000-4000-8000-000000000002', mot: '00000000-0000-4000-8000-000000000003' };
 const CAM = 'c0000000-0000-4000-8000-000000000001';
@@ -14,6 +15,9 @@ const perfis = [
   { id: U.sol, nome_completo: 'Solicitante Exemplo', usuario: 'solicitante', perfil: 'solicitante', ativo: true, primeiro_acesso_pendente: false, criado_em: hoje.toISOString() },
   { id: U.mot, nome_completo: 'Motorista Exemplo', usuario: 'motorista', perfil: 'motorista', ativo: true, primeiro_acesso_pendente: false, criado_em: hoje.toISOString() },
   { id: 'u4', nome_completo: 'Novo Funcionário', usuario: 'novo.func', perfil: 'solicitante', ativo: true, primeiro_acesso_pendente: true, criado_em: hoje.toISOString() },
+  { id: 'u5', nome_completo: 'Funcionário Desativado', usuario: 'desativado', perfil: 'solicitante', ativo: false, primeiro_acesso_pendente: false, criado_em: hoje.toISOString() },
+  { id: 'u6', nome_completo: 'Funcionário Arquivado', usuario: 'arquivado', perfil: 'motorista', ativo: false, arquivado_em: hoje.toISOString(), primeiro_acesso_pendente: false, criado_em: hoje.toISOString() },
+  { id: 'u7', nome_completo: 'Ex-motorista Histórico', usuario: 'excluido-abc123', usuario_original: 'ex.motorista', perfil: 'motorista', ativo: false, arquivado_em: hoje.toISOString(), excluido_em: hoje.toISOString(), primeiro_acesso_pendente: false, criado_em: hoje.toISOString() },
 ];
 const obras = [
   { id: O1, nome: 'Obra Exemplo A', endereco: 'Av. Exemplo, 100 - Manaus/AM', responsavel_nome: 'Eng. Responsável A', responsavel_telefone: '(92) 90000-0001', contato1_nome: 'Mestre de obras A', contato1_telefone: '(92) 90000-0011', ativa: true },
@@ -52,10 +56,14 @@ const T = {
     { id: 3, solicitacao_id: 's4', tipo: 'esclarecimento_resposta', texto: 'Cerca de 2 toneladas.', criado_em: hoje.toISOString(), perfis: { nome_completo: 'Solicitante Exemplo' } }],
   ocupacoes: [], notificacoes: [{ id: 1, usuario_id: 'x', titulo: 'Nova solicitação nº 14', mensagem: 'Retirada de materiais — Obra Exemplo B', link: '#/solicitacoes/s4', lida: false, criado_em: hoje.toISOString() }],
   ocorrencias: [{ id: 'oc1', tipo: 'impedimento_acesso', descricao: 'Portão da obra fechado na chegada', data_hora: hoje.toISOString(), status: 'aberta', motorista: { nome_completo: 'Motorista Exemplo' } }],
-  checklists: [], despesas: [{ id: 'd1', categoria: 'abastecimento', descricao: 'Abastecimento: 80 L', valor: 520, data: HOJE, status: 'pendente', origem: 'abastecimento', lancador: { nome_completo: 'Motorista Exemplo' } }],
-  vw_planos_manutencao: [{ id: 'p1', descricao: 'Troca de óleo', intervalo_km: 10000, ultimo_km: 36000, proximo_km: 46000, situacao: 'proxima', ativo: true }],
+  checklists: [], vw_planos_manutencao: [{ id: 'p1', descricao: 'Troca de óleo', intervalo_km: 10000, ultimo_km: 36000, proximo_km: 46000, situacao: 'proxima', ativo: true }],
   planos_manutencao: [], documentos: [{ id: 'doc1', tipo: 'crlv', descricao: 'CRLV 2026', validade: dia(20), ativo: true, visivel_motorista: true }],
-  anexos: [], expedientes: [], atendimentos: [], abastecimentos: [], auditoria: [{ id: 1, usuario_nome: 'Administrador Exemplo', acao: 'update', tabela: 'solicitacoes', registro_id: 's2', justificativa: null, criado_em: hoje.toISOString(), valor_anterior: { status: 'pendente' }, valor_novo: { status: 'aprovada' } }],
+  anexos: [],
+  expedientes: [{ id: 'e1', inicio_em: HOJE_10H, fim_em: HOJE_10H, km_inicial: 15200, km_final: 15262, motorista_id: U.mot, perfis: { nome_completo: 'Motorista Exemplo' } }],
+  atendimentos: [{ id: 'at1', inicio_em: HOJE_10H, fim_em: HOJE_10H, obra_id: O1, obras: { nome: 'Obra Exemplo A' }, servico: 'Transporte de vergalhões', distancia_km: 18, motorista_id: U.mot, perfis: { nome_completo: 'Motorista Exemplo' }, atendimento_materiais: [] }],
+  abastecimentos: [
+    { id: 'ab1', caminhao_id: CAM, data_hora: HOJE_10H, km: 15230, litros: 62.5, valor: 412.5, posto: 'Posto Exemplo', observacoes: 'Tanque cheio', motorista_id: U.mot, perfis: { nome_completo: 'Motorista Exemplo' } },
+    { id: 'ab2', caminhao_id: CAM, data_hora: HOJE_10H, km: 15250, litros: 20, valor: null, posto: 'Posto Exemplo 2', motorista_id: U.mot, perfis: { nome_completo: 'Motorista Exemplo' } }], auditoria: [{ id: 1, usuario_nome: 'Administrador Exemplo', acao: 'update', tabela: 'solicitacoes', registro_id: 's2', justificativa: null, criado_em: hoje.toISOString(), valor_anterior: { status: 'pendente' }, valor_novo: { status: 'aprovada' } }],
   atividades_operacionais: [], bloqueios: [{ id: 'b1', data: dia(4), periodo: 'tarde', motivo: 'Uso interno do escritório', ativo: true, criado_em: hoje.toISOString(), autor: { nome_completo: 'Administrador Exemplo' } }],
   push_inscricoes: [],
 };
@@ -72,10 +80,12 @@ class Consulta {
   in(k, vs) { this.filtros.push((r) => r[k] === undefined || vs.includes(r[k])); return this; }
   gte(k, v) { this.filtros.push((r) => r[k] === undefined || String(r[k]) >= v); return this; }
   lte(k, v) { this.filtros.push((r) => r[k] === undefined || String(r[k]) <= v); return this; }
-  is() { return this; } ilike() { return this; } order() { return this; } limit() { return this; } range() { return this; }
+  is(k, v) { this.filtros.push((r) => r[k] === undefined || (v === null ? r[k] == null : r[k] === v)); return this; } ilike() { return this; } order() { return this; } limit() { return this; } range() { return this; }
   insert() { this.op = 'w'; return this; } update() { this.op = 'w'; return this; } upsert() { this.op = 'w'; return this; } delete() { this.op = 'w'; return this; }
   maybeSingle() { this.um = true; return this; } single() { this.um = true; return this; }
   then(ok, falha) {
+    if (this.t === 'despesas') return Promise.resolve({ data: null, error: { message: 'permission denied for table despesas' } }).then(ok, falha);
+    window.__tabelasLidas = [...new Set([...(window.__tabelasLidas || []), this.t])];
     let linhas = (T[this.t] || []).filter((r) => this.filtros.every((f) => f(r)));
     if (this.t === 'perfis' && this.um) linhas = perfis.filter((p) => p.id === atual);
     const r = this.op === 'w' ? { data: this.um ? { id: 'novo', numero: 99 } : [], error: null }
@@ -106,9 +116,7 @@ export function createClient() {
         return { data: { cadastradas: n('cadastrar'), vinculadas: n('vincular'), atualizadas: n('atualizar'), nao_aplicadas: 0,
           resultados: args.p_linhas.map((l) => ({ codigo: l.codigo, nome: l.nome, acao: l.acao, ok: true })) }, error: null };
       }
-      if (fn === 'resumo_financeiro') return { data: { total: 8420.5, km_rodados: 1830, custo_por_km: 4.6, pendentes: 520, acumulado_geral: 31250,
-        por_categoria: [{ categoria: 'abastecimento', total: 5200, qtd: 10 }, { categoria: 'manutencao_preventiva', total: 2100, qtd: 2 }, { categoria: 'pneus', total: 1120.5, qtd: 1 }],
-        por_mes: [{ mes: '2026-08', total: 2100 }, { mes: '2026-09', total: 3150 }, { mes: '2026-10', total: 1700 }, { mes: '2026-11', total: 1470.5 }] }, error: null };
+      if (fn === 'resumo_financeiro') throw new Error('resumo_financeiro não existe mais');
       if (fn === 'criar_solicitacao') return { data: { id: 's4', numero: 16 }, error: null };
       return { data: null, error: null };
     },

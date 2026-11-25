@@ -18,7 +18,6 @@ const ROTAS = {
   'manutencoes':     { arq: 'manutencoes', perfis: ['admin'] },
   'diario':          { arq: 'diario', perfis: ['admin', 'motorista'] },
   'ocorrencias':     { arq: 'ocorrencias', perfis: ['admin'] },
-  'despesas':        { arq: 'despesas', perfis: ['admin'] },
   'documentos':      { arq: 'documentos', perfis: ['admin', 'motorista'] },
   'relatorios':      { arq: 'relatorios', perfis: ['admin'] },
   'obras':           { arq: 'obras', perfis: ['admin'] },
@@ -37,7 +36,7 @@ const MENUS = {
   admin: [
     ['painel', 'Painel geral'], ['agenda', 'Agenda do caminhão'], ['solicitacoes', 'Solicitações'], ['*solicitar', 'Solicitar caminhão'],
     ['operacao', 'Operação', [['bloqueios', 'Bloqueios'], ['manutencoes', 'Manutenções'], ['diario', 'Diário de Bordo'], ['ocorrencias', 'Ocorrências']]],
-    ['gestao', 'Gestão', [['despesas', 'Despesas'], ['documentos', 'Documentos'], ['relatorios', 'Relatórios']]],
+    ['gestao', 'Gestão', [['documentos', 'Documentos e vencimentos'], ['relatorios', 'Relatórios operacionais']]],
     ['cadastros', 'Cadastros', [['obras', 'Obras'], ['caminhoes', 'Caminhões'], ['usuarios', 'Usuários']]],
     ['admin', 'Administração', [['configuracoes', 'Configurações'], ['auditoria', 'Auditoria']]],
     APLICATIVO,
@@ -143,7 +142,7 @@ function montarLayout() {
         <a href="${inicioDoPerfil()}" class="marca">${LOGO}</a>
         <div class="sistema-nome"><img src="assets/caminhao-munck.svg" alt="" class="marca-produto">Caminhão Masters</div>
         <nav id="menu">${menuHTML()}</nav>
-        <div class="versao">Versão 1.4</div>
+        <div class="versao">Versão 1.5</div>
       </aside>
       <div class="lateral-fundo" id="lateral-fundo"></div>
       <main class="principal">

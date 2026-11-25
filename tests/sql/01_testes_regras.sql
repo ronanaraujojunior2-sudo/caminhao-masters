@@ -284,7 +284,7 @@ do $$ declare s public.solicitacoes; begin
 end $$;
 reset role;
 
-\echo '--- 6. Diário de Bordo, checklists, abastecimento, ocorrências e despesas'
+\echo '--- 6. Diário de Bordo, checklists, abastecimento e ocorrências (sem controle financeiro)'
 select teste.entrar('mot'); set role authenticated;
 do $$ declare v uuid := gen_random_uuid(); begin
   insert into public.expedientes (id, caminhao_id, motorista_id, inicio_em, km_inicial) values (v, teste.id('cam'), auth.uid(), now(), 1000);
@@ -298,9 +298,16 @@ do $$ declare v uuid := gen_random_uuid(); begin
   perform teste.ok((select tem_critico from public.checklists limit 1), 'freio irregular marcado como crítico pelo servidor');
   insert into public.abastecimentos (id, caminhao_id, expediente_id, motorista_id, data_hora, km, litros, valor, posto)
   values (gen_random_uuid(), teste.id('cam'), v, auth.uid(), now(), 1050, 80, 520, 'Posto A');
-  perform teste.ok((select status from public.despesas where origem = 'abastecimento') = 'pendente', 'abastecimento do motorista gera despesa pendente');
-  insert into public.despesas (caminhao_id, categoria, descricao, valor, data, status) values (teste.id('cam'), 'emergencial', 'Pneu furado', 150, current_date, 'aprovada');
-  perform teste.ok((select status from public.despesas where descricao = 'Pneu furado') = 'pendente', 'despesa emergencial do motorista fica pendente');
+  insert into public.abastecimentos (id, caminhao_id, expediente_id, motorista_id, data_hora, km, litros, posto, observacoes)
+  values (gen_random_uuid(), teste.id('cam'), v, auth.uid(), now(), 1060, 20, 'Posto B', 'Sem valor informado');
+  perform teste.ok((select count(*) from public.abastecimentos where valor is null and observacoes is not null) = 1, 'abastecimento SEM valor é aceito (valor opcional) e guarda observações');
+  perform teste.erro(format($q$insert into public.abastecimentos (id, caminhao_id, motorista_id, data_hora, km, litros) values (%L, %L, auth.uid(), now(), 1070, 5)$q$,
+     gen_random_uuid(), teste.id('cam')), 'abastecimentos_posto_obrigatorio', 'novo abastecimento exige o nome do posto');
+  perform teste.erro(format($q$insert into public.abastecimentos (id, caminhao_id, motorista_id, data_hora, km, litros, valor, posto) values (%L, %L, auth.uid(), now(), 1070, 5, -1, 'X Posto')$q$,
+     gen_random_uuid(), teste.id('cam')), 'abastecimentos_valor_check', 'valor negativo é recusado');
+  perform teste.erro($q$select count(*) from public.despesas$q$, 'permission denied', 'motorista NÃO acessa despesas (controle financeiro fica no Sienge)');
+  perform teste.erro(format($q$insert into public.anexos (entidade, entidade_id, bucket, caminho, enviado_por) values ('despesa', %L, 'fotos', 'x/y.jpg', auth.uid())$q$, gen_random_uuid()),
+     'row-level security', 'motorista NÃO anexa comprovante de despesa');
   insert into public.ocorrencias (id, caminhao_id, motorista_id, tipo, descricao, data_hora) values (gen_random_uuid(), teste.id('cam'), auth.uid(), 'impedimento_acesso', 'Portão fechado', now());
   update public.ocorrencias set status = 'resolvida';
   perform teste.ok((select status from public.ocorrencias limit 1) = 'aberta', 'motorista NÃO resolve ocorrência');
@@ -315,7 +322,7 @@ select teste.entrar('sol1'); set role authenticated;
 do $$ begin
   perform teste.erro(format($q$insert into public.expedientes (id, caminhao_id, motorista_id, inicio_em, km_inicial) values (%L, %L, auth.uid(), now(), 1)$q$,
     gen_random_uuid(), teste.id('cam')), 'row-level security', 'solicitante NÃO usa Diário de Bordo');
-  perform teste.ok((select count(*) from public.despesas) = 0, 'solicitante NÃO vê despesas');
+  perform teste.erro($q$select count(*) from public.despesas$q$, 'permission denied', 'solicitante NÃO acessa despesas');
 end $$;
 reset role;
 select teste.entrar('admin'); set role authenticated;
@@ -323,12 +330,13 @@ do $$ declare r jsonb; begin
   perform teste.ok(exists (select 1 from public.notificacoes where tipo = 'irregularidade'), 'admin alertado da irregularidade crítica');
   perform teste.ok(exists (select 1 from public.notificacoes where tipo = 'ocorrencia'), 'admin notificado da ocorrência');
   perform teste.ok((select km_atual from public.caminhoes where id = teste.id('cam')) = 1080, 'KM do caminhão atualizado');
-  r := public.resumo_financeiro(teste.id('cam'), current_date - 30, current_date + 1);
-  perform teste.ok((r ->> 'total')::numeric = 0 and (r ->> 'pendentes')::numeric = 670, 'despesas pendentes NÃO compõem o total oficial');
-  perform teste.erro($q$update public.despesas set status = 'recusada' where descricao = 'Pneu furado'$q$, 'motivo', 'recusa de despesa exige motivo');
-  update public.despesas set status = 'aprovada' where status = 'pendente';
-  r := public.resumo_financeiro(teste.id('cam'), current_date - 30, current_date + 1);
-  perform teste.ok((r ->> 'total')::numeric = 670 and (r ->> 'custo_por_km')::numeric = 8.38, 'aprovadas compõem total e custo/km');
+  perform teste.ok((select count(*) from public.abastecimentos) = 2 and (select sum(valor) from public.abastecimentos) = 520,
+    'admin consulta os abastecimentos com o valor registrado');
+  reset role;
+  perform teste.ok((select count(*) from public.despesas) = 0, 'abastecimento NÃO gera despesa (nenhum lançamento financeiro)');
+  perform teste.ok(not exists (select 1 from pg_proc where proname = 'resumo_financeiro'), 'resumo financeiro / custo por km removidos');
+  set role authenticated;
+  perform teste.erro($q$select count(*) from public.despesas$q$, 'permission denied', 'nem o admin acessa despesas pelo sistema (dados antigos preservados no banco)');
   update public.ocorrencias set status = 'resolvida', resolucao = 'Contato com a obra';
   perform teste.ok((select resolvido_por from public.ocorrencias limit 1) = auth.uid(), 'admin resolve ocorrência (autor pela sessão)');
 end $$;
@@ -496,6 +504,72 @@ begin
     'código do Sienge não se repete');
 end $$;
 reset role;
+
+\echo ''
+\echo '--- 10. Usuários: arquivar, reativar e excluir preservando o histórico'
+-- As funções svc_* são chamadas pela Edge Function "usuarios" (chave do servidor).
+set role authenticated;
+select teste.entrar('admin');
+do $$ begin
+  perform teste.erro(format($q$select public.svc_excluir_usuario(%L, %L, 'x')$q$, teste.id('sol2'), teste.id('admin')), 'permission denied',
+    'navegador NÃO chama a exclusão diretamente (só o servidor)');
+  perform teste.erro(format($q$select public.svc_arquivar_usuario(%L, %L, true, 'x')$q$, teste.id('sol2'), teste.id('admin')), 'permission denied',
+    'navegador NÃO chama o arquivamento diretamente');
+end $$;
+reset role;
+do $$
+declare r jsonb; v_novo uuid; n_aud int;
+begin
+  -- usuário SEM histórico: excluído de verdade
+  insert into auth.users (email) values ('temporario@caminhaomasters.local') returning id into v_novo;
+  insert into public.perfis (id, nome_completo, usuario, perfil, primeiro_acesso_pendente) values (v_novo, 'Usuário Temporário', 'temporario', 'solicitante', true);
+  insert into public.notificacoes (usuario_id, titulo) values (v_novo, 'Bem-vindo');
+  r := public.svc_excluir_usuario(v_novo, teste.id('admin'), 'Cadastrado por engano');
+  perform teste.ok(r->>'modo' = 'removido' and not exists (select 1 from public.perfis where id = v_novo),
+    'excluir usuário sem histórico apaga o cadastro');
+  perform teste.ok(exists (select 1 from public.auditoria where acao = 'exclusao_usuario' and registro_id = v_novo::text
+      and usuario_id = teste.id('admin') and valor_novo->>'usuario' = 'temporario' and justificativa = 'Cadastrado por engano'),
+    'exclusão registrada na auditoria (administrador, usuário afetado, data e hora)');
+  -- usuário COM histórico (motorista tem expediente, checklist, abastecimentos, ocorrência)
+  r := public.svc_excluir_usuario(teste.id('mot'), teste.id('admin'), 'Desligado da empresa');
+  perform teste.ok(r->>'modo' = 'historico' and (r->'vinculos'->>'total')::int > 0, 'excluir usuário com histórico mantém o registro histórico');
+  perform teste.ok((select not ativo and excluido_em is not null and arquivado_em is not null and nome_completo = 'Motorista Teste'
+      and usuario_original = 'mot' and usuario like 'excluido-%' from public.perfis where id = teste.id('mot')),
+    'nome preservado, acesso removido e nome de usuário liberado');
+  perform teste.ok((select count(*) from public.expedientes where motorista_id = teste.id('mot')) = 1
+      and (select count(*) from public.abastecimentos where motorista_id = teste.id('mot')) = 2
+      and (select count(*) from public.ocorrencias where motorista_id = teste.id('mot')) = 1,
+    'expedientes, abastecimentos e ocorrências do usuário excluído continuam no histórico');
+  perform teste.ok((select p.nome_completo from public.abastecimentos a join public.perfis p on p.id = a.motorista_id limit 1) = 'Motorista Teste',
+    'registros antigos continuam mostrando o nome do funcionário');
+  perform teste.ok(not exists (select 1 from public.credenciais_acesso where usuario_id = teste.id('mot'))
+      and not exists (select 1 from public.notificacoes where usuario_id = teste.id('mot')), 'senha/chave e notificações pessoais removidas');
+  perform teste.erro(format($q$select public.svc_excluir_usuario(%L, %L, 'x')$q$, teste.id('mot'), teste.id('admin')), 'já foi excluído', 'não exclui duas vezes');
+  perform teste.erro(format($q$select public.svc_arquivar_usuario(%L, %L, false, 'x')$q$, teste.id('mot'), teste.id('admin')), 'excluído',
+    'usuário excluído NÃO pode ser reativado');
+  perform teste.erro(format($q$update public.perfis set ativo = true where id = %L$q$, teste.id('mot')), 'histórico', 'registro histórico não pode ser editado');
+  -- o nome de usuário antigo fica livre para um novo cadastro
+  insert into auth.users (email) values ('mot2@caminhaomasters.local') returning id into v_novo;
+  insert into public.perfis (id, nome_completo, usuario, perfil) values (v_novo, 'Novo Motorista', 'mot', 'motorista');
+  perform teste.ok(true, 'nome de usuário do excluído pode ser reutilizado');
+  -- proteções
+  perform teste.erro(format($q$select public.svc_excluir_usuario(%L, %L, 'x')$q$, teste.id('admin'), teste.id('admin')), 'próprio', 'administrador NÃO exclui a si mesmo');
+  update public.perfis set ativo = false where id = teste.id('admin2');
+  perform teste.erro(format($q$select public.svc_excluir_usuario(%L, %L, 'x')$q$, teste.id('admin'), teste.id('admin2')), 'último administrador',
+    'NÃO exclui o último administrador ativo');
+  perform teste.erro(format($q$delete from public.perfis where id = %L$q$, teste.id('admin')), 'último administrador', 'banco protege o último administrador também contra exclusão direta');
+  update public.perfis set ativo = true where id = teste.id('admin2');
+  -- arquivar e reativar
+  perform public.svc_arquivar_usuario(teste.id('sol2'), teste.id('admin'), true, 'Saiu da obra');
+  perform teste.ok((select not ativo and arquivado_em is not null and arquivado_por = teste.id('admin') from public.perfis where id = teste.id('sol2')),
+    'arquivar retira o acesso e marca como arquivado');
+  perform teste.erro(format($q$update public.perfis set ativo = true where id = %L$q$, teste.id('sol2')), 'Reativar', 'arquivado não volta a ficar ativo sem “Reativar”');
+  perform public.svc_arquivar_usuario(teste.id('sol2'), teste.id('admin'), false, null);
+  perform teste.ok((select ativo and arquivado_em is null from public.perfis where id = teste.id('sol2')), 'reativar devolve o acesso e tira do arquivo');
+  perform teste.erro(format($q$select public.svc_arquivar_usuario(%L, %L, true, 'x')$q$, teste.id('admin'), teste.id('admin')), 'próprio', 'administrador NÃO arquiva a si mesmo');
+  select count(*) into n_aud from public.auditoria where acao in ('arquivamento_usuario','reativacao_usuario');
+  perform teste.ok(n_aud = 2, 'arquivar e reativar ficam na auditoria');
+end $$;
 
 \echo ''
 \echo '=== TODOS OS TESTES DO BANCO PASSARAM ==='

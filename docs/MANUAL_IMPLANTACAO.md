@@ -210,7 +210,7 @@ Sem esta etapa, as notificações funcionam no sino do sistema e como aviso do n
 
 **Restaurar** (com apoio de TI): baixar o artefato, descriptografar com `gpg -d arquivo.tgz.gpg > backup.tgz`, extrair e usar `pg_restore` em um projeto novo onde as migrações já foram instaladas.
 
-**Recomendação extra:** uma vez por mês, exporte em Excel as **Solicitações**, **Despesas** e **Auditoria** e guarde na pasta de rede da empresa.
+**Recomendação extra:** uma vez por mês, exporte em Excel as **Solicitações**, o **Relatório operacional** e a **Auditoria** e guarde na pasta de rede da empresa.
 
 ### Manutenção de rotina
 - **Semanal:** conferir o Painel (pendências, ocorrências, alertas).

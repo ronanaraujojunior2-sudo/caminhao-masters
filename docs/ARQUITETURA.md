@@ -55,7 +55,7 @@ Cada usuário tem `sessoes_invalidadas_em`. Toda regra de segurança confere se 
 ## 5. Funcionamento offline (motorista)
 
 - O Service Worker guarda as telas no aparelho; a última programação carregada fica em cache.
-- Registros do Diário de Bordo (início/encerramento de expediente, checklists, atendimentos, materiais, abastecimentos, ocorrências, despesas, fotos, iniciar/finalizar atendimento) entram numa **fila no IndexedDB** com **ID gerado no aparelho**.
+- Registros do Diário de Bordo (início/encerramento de expediente, checklists, atendimentos, materiais, abastecimentos, ocorrências, fotos, iniciar/finalizar atendimento) entram numa **fila no IndexedDB** com **ID gerado no aparelho**.
 - A fila envia na ordem quando a internet volta (evento `online` e a cada 60 s). Reenvio nunca duplica (`on conflict do nothing`; funções idempotentes).
 - Indicador no topo: “⟳ N pendente(s) de sincronização”. Erros de regra ficam marcados para revisão (tentar novamente/descartar).
 - Até a sincronização, o banco central continua considerando o período ocupado — o caminhão não é liberado oficialmente.
@@ -73,7 +73,8 @@ Cada usuário tem `sessoes_invalidadas_em`. Toda regra de segurança confere se 
 | Motorista solicitar caminhão | Não permitido | O perfil do motorista é operacional (lista do item 9) |
 | “Em manutenção” concluída | Mantém o período ocupado; cancelar libera | Histórico fiel do dia |
 | Itens críticos do checklist | Pneus, freios, luzes, gancho, cabos/cintas, comandos hidráulicos, patolas, lança, vazamentos — sempre críticos; demais podem ser marcados como críticos pelo motorista | Servidor recalcula; não confia no aparelho |
-| Abastecimento | Gera despesa automaticamente (pendente se lançada pelo motorista) | Evita lançamento em dobro |
+| Abastecimento | Atualiza o KM do caminhão; o valor pago é opcional e apenas informativo (não gera despesa) | Controle financeiro fica no Sienge (ajuste da gestão, 24/11/2026). A tabela antiga de despesas foi preservada no banco, sem acesso pelo sistema |
+| Exclusão de usuário | Conta de acesso apagada; cadastro apagado se não houver registros, ou mantido como “registro histórico” (nome preservado) se houver | Integridade do banco e rastreabilidade das operações |
 | Hospedagem | GitHub Pages | Mesmo padrão do Controle de Ferramentas e Materiais; sem serviço adicional; a segurança fica no Supabase (RLS e funções de servidor), não no sigilo do código |
 | Exportação PDF | Pela impressão do navegador (“Salvar como PDF”) com folha de estilo própria | Sem bibliotecas pesadas, funciona em qualquer aparelho |
 | Exportação Excel | Gerador XLSX próprio (validado com leitor de planilhas) | Sem dependências externas |

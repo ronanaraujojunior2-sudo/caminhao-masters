@@ -1,12 +1,12 @@
 // DIÁRIO DE BORDO — consulta cronológica (motorista: os próprios; admin: todos) e exportação
-import { sb, estado, q, ehAdmin, urlArquivo } from '../api.js';
+import { sb, estado, q, ehAdmin, urlArquivo, limitesDoPeriodo } from '../api.js';
 import { esc, fmtData, fmtDataHora, fmtNum, fmtMoeda, opcoes, carregando, vazio, janela, baixarArquivo, rotulo } from '../ui.js';
 import { paginar, paginacaoHTML } from '../ui.js';
 import { criarXLSX } from '../lib/xlsx.js';
 import { RESULTADOS } from '../lib/checklists.js';
 import { paraISO } from '../lib/regras.js';
 import { expedienteAberto, iniciarExpediente, encerrarExpediente, registrarAtendimento, registrarAbastecimento,
-  registrarOcorrencia, registrarDespesa } from './diario-forms.js';
+  registrarOcorrencia } from './diario-forms.js';
 
 export async function fotosHTML(entidade, ids) {
   const lista = Array.isArray(ids) ? ids : [ids];
@@ -43,8 +43,7 @@ export async function render(el) {
     <div class="cabecalho"><h1>Diário de Bordo</h1><div class="acoes">
       ${estado.perfil.perfil === 'motorista' || admin ? `<button class="btn btn-sec" data-novo="ocorrencia">+ Ocorrência</button>
         <button class="btn btn-sec" data-novo="abastecimento">+ Abastecimento</button>` : ''}
-      ${estado.perfil.perfil === 'motorista' ? `<button class="btn btn-sec" data-novo="despesa">+ Despesa emergencial</button>
-        <button class="btn btn-pri" data-novo="atendimento">+ Atendimento</button>
+      ${estado.perfil.perfil === 'motorista' ? `<button class="btn btn-pri" data-novo="atendimento">+ Atendimento</button>
         <button class="btn btn-dest" data-novo="expediente">${expedienteAberto() ? 'Encerrar expediente' : 'Iniciar expediente'}</button>` : ''}
       <button class="btn btn-sec" id="exportar">Exportar Excel</button></div></div>
     <div class="abas">${Object.entries(ABAS).map(([k, v]) => `<button data-aba="${k}" class="${k === st.aba ? 'ativa' : ''}">${v.t}</button>`).join('')}</div>
@@ -60,7 +59,7 @@ export async function render(el) {
     const a = ABAS[st.aba];
     const perfil = `perfis!${a.tabela}_motorista_id_fkey(nome_completo)`;
     let c = sb.from(a.tabela).select(st.aba === 'atendimentos' ? `*, ${perfil}, atendimento_materiais(*)` : `*, ${perfil}`)
-      .gte(a.data, st.de + 'T00:00:00').lte(a.data, st.ate + 'T23:59:59').order(a.data, { ascending: false }).limit(500);
+      .gte(a.data, limitesDoPeriodo(st.de, st.ate)[0]).lte(a.data, limitesDoPeriodo(st.de, st.ate)[1]).order(a.data, { ascending: false }).limit(500);
     if (st.motorista) c = c.eq('motorista_id', st.motorista);
     try { dados = await q(c); } catch (e) { el.querySelector('#lista').innerHTML = `<div class="alerta alerta-erro">${esc(e.message)}</div>`; return; }
     el.querySelector('#lista').innerHTML = dados.length ? tabela() : vazio('Nenhum registro no período.');
@@ -77,8 +76,8 @@ export async function render(el) {
       ['Recebimento', (x) => (x.recebimento_confirmado ? 'Confirmado' : '—')]],
     checklists: [['Data', (x) => fmtDataHora(x.registrado_em)], ['Tipo', (x) => rotulo(x.tipo)], ['Motorista', (x) => esc(x.perfis?.nome_completo)],
       ['Resultado', (x) => x.tem_critico ? '<span class="badge badge-erro">Irregularidade CRÍTICA</span>' : x.tem_irregularidade ? '<span class="badge badge-aviso">Com irregularidade</span>' : '<span class="badge badge-ok">Conforme</span>']],
-    abastecimentos: [['Data', (x) => fmtDataHora(x.data_hora)], ['KM', (x) => fmtNum(x.km)], ['Litros', (x) => fmtNum(x.litros, 2)],
-      ['Valor', (x) => fmtMoeda(x.valor)], ['R$/L', (x) => fmtMoeda(x.valor / x.litros)], ['Posto', (x) => esc(x.posto || '—')]],
+    abastecimentos: [['Data', (x) => fmtDataHora(x.data_hora)], ['Motorista', (x) => esc(x.perfis?.nome_completo)], ['KM', (x) => fmtNum(x.km)], ['Litros', (x) => fmtNum(x.litros, 2)],
+      ['Valor pago', (x) => (x.valor == null ? '<span class="muted">não informado</span>' : fmtMoeda(x.valor))], ['Posto', (x) => esc(x.posto || '—')]],
     ocorrencias: [['Data', (x) => fmtDataHora(x.data_hora)], ['Tipo', (x) => rotulo(x.tipo)], ['Descrição', (x) => esc(x.descricao)],
       ['Situação', (x) => `<span class="badge ${x.status === 'resolvida' ? 'badge-ok' : 'badge-aviso'}">${rotulo(x.status)}</span>`]],
   };
@@ -108,7 +107,7 @@ export async function render(el) {
         <div><dt>Registro</dt><dd>${x.registrado_offline ? 'Feito sem conexão e sincronizado em ' + fmtDataHora(x.sincronizado_em) : 'Online'}</dd></div></dl>
         <h3>Checklists</h3>${chks.map(checklistHTML).join('') || '<p>—</p>'}
         <h3>Atendimentos</h3>${atds.map((a) => `<p>• ${fmtDataHora(a.inicio_em)} — ${esc(nomeObra(a.obra_id))}: ${esc(a.servico)}</p>`).join('') || '<p>—</p>'}
-        <h3>Abastecimentos</h3>${abs.map((a) => `<p>• ${fmtDataHora(a.data_hora)} — ${fmtNum(a.litros, 2)} L · ${fmtMoeda(a.valor)}</p>`).join('') || '<p>—</p>'}
+        <h3>Abastecimentos</h3>${abs.map((a) => `<p>• ${fmtDataHora(a.data_hora)} — ${fmtNum(a.litros, 2)} L · KM ${fmtNum(a.km)} · ${esc(a.posto || '')}</p>`).join('') || '<p>—</p>'}
         <h3>Ocorrências</h3>${ocs.map((o) => `<p>• ${rotulo(o.tipo)}: ${esc(o.descricao)}</p>`).join('') || '<p>—</p>'}
         <h3>Fotos</h3>${(await fotosHTML('expediente', x.id)) + (await fotosHTML('checklist', chks.map((c) => c.id))) || '<p>—</p>'}`;
     } else if (st.aba === 'atendimentos') {
@@ -127,8 +126,9 @@ export async function render(el) {
       corpo = checklistHTML(x) + (await fotosHTML('checklist', x.id));
     } else if (st.aba === 'abastecimentos') {
       corpo = `<dl class="detalhes"><div><dt>Data</dt><dd>${fmtDataHora(x.data_hora)}</dd></div><div><dt>KM</dt><dd>${fmtNum(x.km)}</dd></div>
-        <div><dt>Litros</dt><dd>${fmtNum(x.litros, 3)}</dd></div><div><dt>Valor</dt><dd>${fmtMoeda(x.valor)}</dd></div>
-        <div><dt>Posto</dt><dd>${esc(x.posto || '—')}</dd></div></dl><h3>Comprovante</h3>${await fotosHTML('abastecimento', x.id) || '<p>—</p>'}`;
+        <div><dt>Motorista</dt><dd>${esc(x.perfis?.nome_completo || '—')}</dd></div><div><dt>Caminhão</dt><dd>${esc(estado.caminhoes.find((c) => c.id === x.caminhao_id)?.nome || '—')}</dd></div>
+        <div><dt>Litros</dt><dd>${fmtNum(x.litros, 3)}</dd></div><div><dt>Valor pago</dt><dd>${x.valor == null ? 'Não informado' : fmtMoeda(x.valor)}</dd></div>
+        <div><dt>Posto</dt><dd>${esc(x.posto || '—')}</dd></div><div><dt>Observações</dt><dd>${esc(x.observacoes || '—')}</dd></div></dl><h3>Comprovante</h3>${await fotosHTML('abastecimento', x.id) || '<p>—</p>'}`;
     } else {
       corpo = `<dl class="detalhes"><div><dt>Tipo</dt><dd>${rotulo(x.tipo)}</dd></div><div><dt>Data</dt><dd>${fmtDataHora(x.data_hora)}</dd></div>
         <div><dt>Local</dt><dd>${esc(x.local || '—')}</dd></div><div><dt>Descrição</dt><dd>${esc(x.descricao)}</dd></div>
@@ -156,7 +156,7 @@ export async function render(el) {
       checklists: [['Data', (x) => fmtDataHora(x.registrado_em)], ['Tipo', (x) => x.tipo], ['Motorista', (x) => x.perfis?.nome_completo],
         ['Irregularidades', (x) => (x.itens || []).filter((i) => i.resultado === 'irregular').map((i) => i.item + (i.obs ? ` (${i.obs})` : '')).join('; ')], ['Crítico', (x) => Boolean(x.tem_critico)]],
       abastecimentos: [['Data', (x) => fmtDataHora(x.data_hora)], ['Motorista', (x) => x.perfis?.nome_completo], ['KM', (x) => Number(x.km)], ['Litros', (x) => Number(x.litros)],
-        ['Valor', (x) => Number(x.valor)], ['Posto', (x) => x.posto]],
+        ['Valor pago (R$)', (x) => (x.valor == null ? '' : Number(x.valor))], ['Posto', (x) => x.posto], ['Observações', (x) => x.observacoes]],
       ocorrencias: [['Data', (x) => fmtDataHora(x.data_hora)], ['Motorista', (x) => x.perfis?.nome_completo], ['Tipo', (x) => x.tipo], ['Descrição', (x) => x.descricao],
         ['Local', (x) => x.local], ['Situação', (x) => x.status], ['Resolução', (x) => x.resolucao]],
     }[st.aba];
@@ -177,7 +177,6 @@ export async function render(el) {
     const depois = () => { setTimeout(carregar, 900); };
     if (n === 'ocorrencia') registrarOcorrencia(depois);
     if (n === 'abastecimento') registrarAbastecimento(depois);
-    if (n === 'despesa') registrarDespesa(depois);
     if (n === 'atendimento') registrarAtendimento({ obras: obras.filter((o) => o), aoConcluir: depois });
     if (n === 'expediente') (expedienteAberto() ? encerrarExpediente(() => location.reload(), obras) : iniciarExpediente(() => location.reload()));
   });

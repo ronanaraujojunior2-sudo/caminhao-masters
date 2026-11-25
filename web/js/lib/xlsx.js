@@ -105,7 +105,7 @@ function planilhaXML(linhas, larguras) {
 
 /**
  * Cria o arquivo XLSX.
- * abas: [{ nome: 'Despesas', linhas: [[cabeçalho...], [valores...]], larguras?: [12, 30, ...] }]
+ * abas: [{ nome: 'Atendimentos', linhas: [[cabeçalho...], [valores...]], larguras?: [12, 30, ...] }]
  * Retorna Uint8Array.
  */
 export function criarXLSX(abas) {

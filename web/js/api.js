@@ -108,6 +108,14 @@ export function gravarCache(chave, valor) { try { localStorage.setItem('cm-cache
 export function lerCache(chave) { try { return JSON.parse(localStorage.getItem('cm-cache-' + chave)); } catch { return null; } }
 
 /** Diferença do fuso da empresa para UTC, em minutos (Manaus = -240). */
+// Início e fim de um intervalo de datas (AAAA-MM-DD) no fuso da empresa, para filtrar
+// colunas de data e hora: evita que registros noturnos caiam no dia seguinte (UTC).
+export function limitesDoPeriodo(de, ate) {
+  const off = offsetFuso(), a = Math.abs(off);
+  const tz = `${off < 0 ? '-' : '+'}${String(Math.floor(a / 60)).padStart(2, '0')}:${String(a % 60).padStart(2, '0')}`;
+  return [`${de}T00:00:00${tz}`, `${ate}T23:59:59${tz}`];
+}
+
 export function offsetFuso(tz = estado.config?.fuso_horario || 'America/Manaus', quando = new Date()) {
   try {
     const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(quando)

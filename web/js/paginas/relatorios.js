@@ -1,12 +1,15 @@
-// RELATÓRIOS — painel financeiro (custo mensal, por categoria, acumulado, custo/km, comparativos)
-// e relatório operacional (uso do caminhão por obra). Exportação Excel e PDF (impressão).
-import { sb, q, estado, caminhaoAtual, msgErro } from '../api.js';
-import { esc, fmtData, fmtMoeda, fmtNum, opcoes, carregando, aviso, baixarArquivo } from '../ui.js';
+// RELATÓRIOS OPERACIONAIS — uso do caminhão (solicitações, atendimentos, quilometragem,
+// abastecimentos em litros, manutenções/serviços e ocorrências). Exportação Excel e PDF.
+// Sem nenhum valor financeiro: os controles financeiros ficam no Sienge.
+import { sb, q, estado, msgErro, limitesDoPeriodo } from '../api.js';
+import { esc, fmtData, fmtDataHora, fmtNum, opcoes, carregando, aviso, baixarArquivo, rotulo } from '../ui.js';
 import { criarXLSX } from '../lib/xlsx.js';
 import { paraISO, STATUS_SOLICITACAO } from '../lib/regras.js';
-import { nomeCat } from './despesas.js';
+import { consolidar } from '../lib/relatorio-operacional.js';
 
 const mesNome = (ym) => new Date(ym + '-15T12:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+const TIPOS_SERVICO = { manutencao_preventiva: 'Manutenção preventiva', manutencao_corretiva: 'Manutenção corretiva', lavagem: 'Lavagem',
+  borracharia: 'Borracharia', revisao: 'Revisão', abastecimento: 'Abastecimento', outros: 'Outros serviços' };
 
 export async function render(el) {
   const h = new Date();
@@ -17,14 +20,15 @@ export async function render(el) {
     ano: [`${h.getFullYear()}-01-01`, `${h.getFullYear()}-12-31`],
     doze: [paraISO(new Date(h.getFullYear(), h.getMonth() - 11, 1)), paraISO(new Date(h.getFullYear(), h.getMonth() + 1, 0))],
   };
-  const st = { de: presets.doze[0], ate: presets.doze[1], caminhao: estado.caminhaoId || '' };
-  el.innerHTML = `<div class="cabecalho"><h1>Relatórios</h1><div class="acoes"><button class="btn btn-sec" id="xlsx">Exportar Excel</button><button class="btn btn-sec" id="pdf">Exportar PDF</button></div></div>
+  const st = { de: presets.mes[0], ate: presets.mes[1], caminhao: estado.caminhaoId || '' };
+  el.innerHTML = `<div class="cabecalho"><h1>Relatórios operacionais</h1><div class="acoes"><button class="btn btn-sec" id="xlsx">Exportar Excel</button><button class="btn btn-sec" id="pdf">Exportar PDF</button></div></div>
+    <p class="dica nao-imprimir">Utilização do caminhão e rastreabilidade das operações. Controles financeiros ficam no Sienge.</p>
     <div class="filtros nao-imprimir">
-      <label class="campo"><span>Período rápido</span><select id="preset">${opcoes([['doze', 'Últimos 12 meses'], ['mes', 'Este mês'], ['mes_ant', 'Mês anterior'], ['tri', 'Últimos 3 meses'], ['ano', 'Este ano'], ['', 'Personalizado']], 'doze')}</select></label>
+      <label class="campo"><span>Período rápido</span><select id="preset">${opcoes([['mes', 'Este mês'], ['mes_ant', 'Mês anterior'], ['tri', 'Últimos 3 meses'], ['doze', 'Últimos 12 meses'], ['ano', 'Este ano'], ['', 'Personalizado']], 'mes')}</select></label>
       <label class="campo"><span>De</span><input type="date" id="de" value="${st.de}"></label><label class="campo"><span>Até</span><input type="date" id="ate" value="${st.ate}"></label>
       <label class="campo"><span>Caminhão</span><select id="cam">${opcoes(estado.caminhoes.map((c) => [c.id, c.nome]), st.caminhao, 'Todos')}</select></label>
     </div>
-    <div class="so-impressao"><h2>Caminhão Masters — Relatório</h2></div>
+    <div class="so-impressao"><h2>Caminhão Masters — Relatório operacional</h2></div>
     <div id="conteudo-rel">${carregando()}</div>`;
   let ult = null;
 
@@ -32,48 +36,43 @@ export async function render(el) {
     const area = el.querySelector('#conteudo-rel');
     area.innerHTML = carregando();
     try {
-      const dias = Math.round((new Date(st.ate) - new Date(st.de)) / 864e5) + 1;
-      const antAte = paraISO(new Date(new Date(st.de + 'T12:00').getTime() - 864e5));
-      const antDe = paraISO(new Date(new Date(st.de + 'T12:00').getTime() - dias * 864e5));
+      const [ini, fim] = limitesDoPeriodo(st.de, st.ate);
       const cam = st.caminhao || null;
-      let qs = sb.from('solicitacoes').select('status, obra_id, obras(nome), data').gte('data', st.de).lte('data', st.ate);
-      let qd = sb.from('despesas').select('*').eq('status', 'aprovada').gte('data', st.de).lte('data', st.ate).order('data');
-      if (cam) { qs = qs.eq('caminhao_id', cam); qd = qd.eq('caminhao_id', cam); }
-      const [atual, anterior, sols, desp] = await Promise.all([
-        q(sb.rpc('resumo_financeiro', { p_caminhao: cam, p_inicio: st.de, p_fim: st.ate })),
-        q(sb.rpc('resumo_financeiro', { p_caminhao: cam, p_inicio: antDe, p_fim: antAte })),
-        q(qs), q(qd),
+      const f = (c) => (cam ? c.eq('caminhao_id', cam) : c);
+      const [sols, atds, exps, abs, ativ, ocs] = await Promise.all([
+        q(f(sb.from('solicitacoes').select('numero, data, periodo, status, obra_id, obras(nome), categoria_nome').gte('data', st.de).lte('data', st.ate).order('data'))),
+        q(f(sb.from('atendimentos').select('inicio_em, fim_em, obra_id, obras(nome), servico, distancia_km, recebedor_nome, perfis(nome_completo)').gte('inicio_em', ini).lte('inicio_em', fim).order('inicio_em'))),
+        q(f(sb.from('expedientes').select('inicio_em, fim_em, km_inicial, km_final, perfis(nome_completo)').gte('inicio_em', ini).lte('inicio_em', fim).order('inicio_em'))),
+        q(f(sb.from('abastecimentos').select('data_hora, km, litros, posto, perfis(nome_completo)').gte('data_hora', ini).lte('data_hora', fim).order('data_hora'))),
+        q(f(sb.from('atividades_operacionais').select('data, periodo, tipo, descricao, empresa, status, km_execucao, observacoes').gte('data', st.de).lte('data', st.ate).order('data'))),
+        q(f(sb.from('ocorrencias').select('data_hora, tipo, descricao, status, resolucao, perfis!ocorrencias_motorista_id_fkey(nome_completo)').gte('data_hora', ini).lte('data_hora', fim).order('data_hora'))),
       ]);
-      ult = { atual, anterior, sols, desp };
-      const varPct = anterior.total > 0 ? ((atual.total - anterior.total) / anterior.total) * 100 : null;
-      const max = Math.max(1, ...atual.por_mes.map((m) => Number(m.total)));
-      const porObra = {};
-      for (const s of sols) {
-        const k = s.obras?.nome || '—';
-        porObra[k] ??= { total: 0, aprovada: 0, concluida: 0, recusada: 0, cancelada: 0, pendente: 0, esclarecimento: 0 };
-        porObra[k].total++; porObra[k][s.status]++;
-      }
+      const R = consolidar({ sols, atds, exps, abs, ativ, ocs });
+      ult = { R, sols, atds, exps, abs, ativ, ocs };
+      const maxAt = Math.max(1, ...R.porMes.map((m) => m.atendimentos));
       area.innerHTML = `
-        <p class="muted">Período: <b>${fmtData(st.de)}</b> a <b>${fmtData(st.ate)}</b>. Somente despesas aprovadas.</p>
+        <p class="muted">Período: <b>${fmtData(st.de)}</b> a <b>${fmtData(st.ate)}</b>.</p>
         <div class="grade grade-4" style="margin-bottom:1rem">
-          <div class="indicador"><b>${fmtMoeda(atual.total)}</b><span>Custo no período</span></div>
-          <div class="indicador"><b>${atual.custo_por_km != null ? fmtMoeda(atual.custo_por_km) : '—'}</b><span>Custo por km (${fmtNum(atual.km_rodados)} km rodados)</span></div>
-          <div class="indicador"><b>${fmtMoeda(atual.acumulado_geral)}</b><span>Acumulado geral</span></div>
-          <div class="indicador ${varPct > 0 ? 'alerta' : ''}"><b>${varPct === null ? '—' : (varPct > 0 ? '+' : '') + fmtNum(varPct, 1) + '%'}</b><span>vs. período anterior (${fmtMoeda(anterior.total)})</span></div>
-          <div class="indicador ${atual.pendentes > 0 ? 'alerta' : ''}"><b>${fmtMoeda(atual.pendentes)}</b><span>Pendentes de aprovação (fora do total)</span></div>
+          <div class="indicador"><b>${R.solicitacoes}</b><span>Solicitações (${R.aprovadas} aprovadas/concluídas · ${R.recusadas} recusadas/canceladas)</span></div>
+          <div class="indicador"><b>${R.atendimentos}</b><span>Atendimentos realizados</span></div>
+          <div class="indicador"><b>${fmtNum(R.kmRodados)}</b><span>KM rodados (expedientes encerrados)</span></div>
+          <div class="indicador"><b>${fmtNum(R.litros, 1)} L</b><span>Abastecidos${R.consumo ? ` · consumo médio ${fmtNum(R.consumo, 2)} km/L` : ''}</span></div>
+          <div class="indicador"><b>${R.servicosConcluidos}</b><span>Manutenções e serviços realizados${R.programados ? ` · ${R.programados} programado(s)` : ''}</span></div>
+          <div class="indicador ${R.ocorrenciasAbertas ? 'alerta' : ''}"><b>${R.ocorrencias}</b><span>Ocorrências registradas (${R.ocorrenciasAbertas} em aberto)</span></div>
         </div>
-        <section class="cartao"><h2>Custo mensal</h2>
-          ${atual.por_mes.length ? `<div class="barras" role="img" aria-label="Gráfico de custo mensal">${atual.por_mes.map((m) => `<div class="barra"><em>${fmtNum(m.total / 1000, 1)}k</em><i style="height:${(Number(m.total) / max) * 85}%"></i><small>${esc(mesNome(m.mes))}</small></div>`).join('')}</div>
-          <div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Mês</th><th class="num">Total</th><th class="num">Acumulado</th></tr></thead><tbody>
-          ${(() => { let ac = 0; return atual.por_mes.map((m) => { ac += Number(m.total); return `<tr><td>${esc(mesNome(m.mes))}</td><td class="num">${fmtMoeda(m.total)}</td><td class="num">${fmtMoeda(ac)}</td></tr>`; }).join(''); })()}
-          </tbody></table></div>` : '<p>Sem despesas aprovadas no período.</p>'}</section>
+        <section class="cartao"><h2>Utilização por mês</h2>
+          ${R.porMes.length ? `<div class="barras" role="img" aria-label="Atendimentos por mês">${R.porMes.map((m) => `<div class="barra"><em>${m.atendimentos}</em><i style="height:${(m.atendimentos / maxAt) * 85}%"></i><small>${esc(mesNome(m.mes))}</small></div>`).join('')}</div>
+          <div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Mês</th><th class="num">Atendimentos</th><th class="num">KM rodados</th><th class="num">Litros</th><th class="num">Serviços</th><th class="num">Ocorrências</th></tr></thead><tbody>
+          ${R.porMes.map((m) => `<tr><td>${esc(mesNome(m.mes))}</td><td class="num">${m.atendimentos}</td><td class="num">${fmtNum(m.km)}</td><td class="num">${fmtNum(m.litros, 1)}</td><td class="num">${m.servicos}</td><td class="num">${m.ocorrencias}</td></tr>`).join('')}
+          </tbody></table></div>` : '<p>Sem registros operacionais no período.</p>'}</section>
         <div class="grade grade-2">
-          <section class="cartao"><h2>Despesas por categoria</h2>
-            ${atual.por_categoria.length ? `<div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Categoria</th><th class="num">Qtd</th><th class="num">Total</th><th class="num">%</th></tr></thead><tbody>
-            ${atual.por_categoria.map((c) => `<tr><td>${esc(nomeCat(c.categoria))}</td><td class="num">${c.qtd}</td><td class="num">${fmtMoeda(c.total)}</td><td class="num">${fmtNum((c.total / atual.total) * 100, 1)}%</td></tr>`).join('')}</tbody></table></div>` : '<p>—</p>'}</section>
           <section class="cartao"><h2>Uso do caminhão por obra</h2>
-            ${Object.keys(porObra).length ? `<div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Obra</th><th class="num">Solicitações</th><th class="num">Aprovadas/concluídas</th><th class="num">Recusadas/canceladas</th></tr></thead><tbody>
-            ${Object.entries(porObra).sort((a, b) => b[1].total - a[1].total).map(([o, v]) => `<tr><td>${esc(o)}</td><td class="num">${v.total}</td><td class="num">${v.aprovada + v.concluida}</td><td class="num">${v.recusada + v.cancelada}</td></tr>`).join('')}</tbody></table></div>` : '<p>—</p>'}</section>
+            ${R.porObra.length ? `<div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Obra</th><th class="num">Solicitações</th><th class="num">Aprovadas</th><th class="num">Atendimentos</th><th class="num">KM</th></tr></thead><tbody>
+            ${R.porObra.map((o) => `<tr><td>${esc(o.nome)}</td><td class="num">${o.solicitacoes}</td><td class="num">${o.aprovadas}</td><td class="num">${o.atendimentos}</td><td class="num">${fmtNum(o.km)}</td></tr>`).join('')}</tbody></table></div>` : '<p>Sem solicitações no período.</p>'}</section>
+          <section class="cartao"><h2>Manutenções e serviços realizados</h2>
+            ${Object.keys(R.servicos).length ? `<div class="tabela-rolagem"><table class="tabela"><thead><tr><th>Tipo</th><th class="num">Realizados</th></tr></thead><tbody>
+            ${Object.entries(R.servicos).map(([t, n]) => `<tr><td>${esc(TIPOS_SERVICO[t] || t)}</td><td class="num">${n}</td></tr>`).join('')}</tbody></table></div>` : '<p>Nenhum serviço concluído no período.</p>'}
+            ${ativ.filter((x) => x.status === 'concluida').slice(-8).reverse().map((x) => `<p class="dica">• ${fmtData(x.data)} — ${esc(TIPOS_SERVICO[x.tipo] || x.tipo)}: ${esc(x.descricao)}${x.empresa ? ` (${esc(x.empresa)})` : ''}</p>`).join('')}</section>
         </div>`;
     } catch (ex) { area.innerHTML = `<div class="alerta alerta-erro">${esc(msgErro(ex))}</div>`; }
   }
@@ -85,15 +84,25 @@ export async function render(el) {
   el.querySelector('#pdf').onclick = () => { aviso('Na janela de impressão, escolha "Salvar como PDF".', 'info'); setTimeout(() => window.print(), 300); };
   el.querySelector('#xlsx').onclick = () => {
     if (!ult) return;
-    const { atual, anterior, sols, desp } = ult;
-    baixarArquivo(`relatorio-caminhao-masters-${st.de}-a-${st.ate}.xlsx`, criarXLSX([
-      { nome: 'Resumo', larguras: [40, 18], linhas: [['Indicador', 'Valor'], ['Período', `${fmtData(st.de)} a ${fmtData(st.ate)}`], ['Custo no período (R$)', Number(atual.total)],
-        ['KM rodados', Number(atual.km_rodados)], ['Custo por km (R$)', atual.custo_por_km != null ? Number(atual.custo_por_km) : ''], ['Acumulado geral (R$)', Number(atual.acumulado_geral)],
-        ['Período anterior (R$)', Number(anterior.total)], ['Pendentes de aprovação (R$)', Number(atual.pendentes)]] },
-      { nome: 'Por mês', larguras: [12, 16], linhas: [['Mês', 'Total (R$)'], ...atual.por_mes.map((m) => [m.mes, Number(m.total)])] },
-      { nome: 'Por categoria', larguras: [28, 8, 16], linhas: [['Categoria', 'Qtd', 'Total (R$)'], ...atual.por_categoria.map((c) => [nomeCat(c.categoria), c.qtd, Number(c.total)])] },
-      { nome: 'Despesas', larguras: [11, 24, 40, 14, 24], linhas: [['Data', 'Categoria', 'Descrição', 'Valor (R$)', 'Fornecedor'], ...desp.map((d) => [fmtData(d.data), nomeCat(d.categoria), d.descricao, Number(d.valor), d.fornecedor || ''])] },
-      { nome: 'Solicitações', larguras: [11, 30, 22], linhas: [['Data', 'Obra', 'Situação'], ...sols.map((s) => [fmtData(s.data), s.obras?.nome, STATUS_SOLICITACAO[s.status]])] },
+    const { R, sols, atds, abs, ativ, ocs } = ult;
+    baixarArquivo(`relatorio-operacional-caminhao-masters-${st.de}-a-${st.ate}.xlsx`, criarXLSX([
+      { nome: 'Resumo', larguras: [44, 18], linhas: [['Indicador', 'Quantidade'], ['Período', `${fmtData(st.de)} a ${fmtData(st.ate)}`],
+        ['Solicitações', R.solicitacoes], ['Aprovadas/concluídas', R.aprovadas], ['Recusadas/canceladas', R.recusadas], ['Atendimentos realizados', R.atendimentos],
+        ['KM rodados', R.kmRodados], ['Litros abastecidos', R.litros], ['Consumo médio (km/L)', R.consumo ?? ''],
+        ['Manutenções e serviços realizados', R.servicosConcluidos], ['Ocorrências registradas', R.ocorrencias], ['Ocorrências em aberto', R.ocorrenciasAbertas]] },
+      { nome: 'Por mês', larguras: [12, 14, 12, 10, 10, 12], linhas: [['Mês', 'Atendimentos', 'KM rodados', 'Litros', 'Serviços', 'Ocorrências'],
+        ...R.porMes.map((m) => [m.mes, m.atendimentos, m.km, m.litros, m.servicos, m.ocorrencias])] },
+      { nome: 'Por obra', larguras: [40, 13, 11, 13, 10], linhas: [['Obra', 'Solicitações', 'Aprovadas', 'Atendimentos', 'KM'], ...R.porObra.map((o) => [o.nome, o.solicitacoes, o.aprovadas, o.atendimentos, o.km])] },
+      { nome: 'Solicitações', larguras: [8, 11, 8, 36, 26, 22], linhas: [['Nº', 'Data', 'Período', 'Obra', 'Categoria', 'Situação'],
+        ...sols.map((s) => [s.numero, fmtData(s.data), s.periodo === 'manha' ? 'Manhã' : 'Tarde', s.obras?.nome, s.categoria_nome, STATUS_SOLICITACAO[s.status]])] },
+      { nome: 'Atendimentos', larguras: [17, 17, 24, 34, 30, 10, 22], linhas: [['Início', 'Fim', 'Motorista', 'Obra', 'Serviço', 'Distância km', 'Recebedor'],
+        ...atds.map((a) => [fmtDataHora(a.inicio_em), fmtDataHora(a.fim_em), a.perfis?.nome_completo, a.obras?.nome, a.servico, a.distancia_km != null ? Number(a.distancia_km) : '', a.recebedor_nome])] },
+      { nome: 'Abastecimentos', larguras: [17, 24, 10, 10, 28], linhas: [['Data', 'Motorista', 'KM', 'Litros', 'Posto'],
+        ...abs.map((a) => [fmtDataHora(a.data_hora), a.perfis?.nome_completo, Number(a.km), Number(a.litros), a.posto])] },
+      { nome: 'Manutenções e serviços', larguras: [11, 22, 36, 24, 12, 10, 40], linhas: [['Data', 'Tipo', 'Descrição', 'Oficina/prestador', 'Situação', 'KM', 'Observações'],
+        ...ativ.map((x) => [fmtData(x.data), TIPOS_SERVICO[x.tipo] || x.tipo, x.descricao, x.empresa, rotulo(x.status), x.km_execucao != null ? Number(x.km_execucao) : '', x.observacoes])] },
+      { nome: 'Ocorrências', larguras: [17, 22, 40, 14, 36], linhas: [['Data', 'Tipo', 'Descrição', 'Situação', 'Resolução'],
+        ...ocs.map((o) => [fmtDataHora(o.data_hora), rotulo(o.tipo), o.descricao, rotulo(o.status), o.resolucao])] },
     ]), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
   await carregar();

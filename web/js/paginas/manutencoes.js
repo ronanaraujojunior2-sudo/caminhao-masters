@@ -1,14 +1,12 @@
 // MANUTENÇÕES E SERVIÇOS (tornam o caminhão indisponível) + PLANOS PREVENTIVOS (data ou KM)
 import { sb, q, estado, caminhaoAtual, msgErro, offsetFuso } from '../api.js';
-import { esc, fmtData, fmtPeriodo, fmtNum, fmtMoeda, opcoes, vazio, carregando, janela, aviso, pedirTexto, camposHTML, numero, rotulo } from '../ui.js';
+import { esc, fmtData, fmtPeriodo, fmtNum, opcoes, vazio, carregando, janela, aviso, pedirTexto, camposHTML, numero, rotulo } from '../ui.js';
 import { paginar, paginacaoHTML } from '../ui.js';
 import { hojeNoFuso, ehDiaUtil } from '../lib/regras.js';
 import { aoMudarAgenda } from '../sync.js';
 
 const TIPOS = [['manutencao_preventiva', 'Manutenção preventiva'], ['manutencao_corretiva', 'Manutenção corretiva'], ['lavagem', 'Lavagem'],
   ['borracharia', 'Borracharia'], ['revisao', 'Revisão'], ['abastecimento', 'Abastecimento'], ['outros', 'Outros serviços']];
-const CAT_DESPESA = { manutencao_preventiva: 'manutencao_preventiva', manutencao_corretiva: 'manutencao_corretiva', lavagem: 'lavagem',
-  borracharia: 'borracharia', revisao: 'revisao', abastecimento: 'abastecimento', outros: 'outros' };
 const nomeTipo = (t) => TIPOS.find((x) => x[0] === t)?.[1] || t;
 
 export async function render(el) {
@@ -45,7 +43,7 @@ export async function render(el) {
     const pg = paginar(dados, pagina);
     lista.innerHTML = dados.length ? `<div class="tabela-rolagem"><table class="tabela responsiva"><thead><tr><th>Data</th><th>Período</th><th>Tipo</th><th>Descrição</th><th>Empresa</th><th>Situação</th><th></th></tr></thead><tbody>
       ${pg.itens.map((a) => `<tr><td data-r="Data">${fmtData(a.data)}</td><td data-r="Período">${esc(fmtPeriodo(a.periodo))}</td><td data-r="Tipo">${esc(nomeTipo(a.tipo))}</td>
-        <td data-r="Descrição">${esc(a.descricao)}${a.plano_id ? '<br><small>Vinculada a plano preventivo</small>' : ''}</td>
+        <td data-r="Descrição">${esc(a.descricao)}${a.plano_id ? '<br><small>Vinculada a plano preventivo</small>' : ''}${a.status !== 'programada' && a.observacoes ? `<br><small class="pre">${esc(a.observacoes)}</small>` : ''}${a.km_execucao != null ? `<br><small>KM ${fmtNum(a.km_execucao)}</small>` : ''}</td>
         <td data-r="Empresa">${esc(a.empresa || '—')}${a.telefone ? `<br><small>${esc(a.telefone)}</small>` : ''}</td>
         <td data-r="Situação"><span class="badge ${a.status === 'programada' ? 'sit-manutencao' : a.status === 'concluida' ? 'badge-ok' : 'st-cancelada'}">${rotulo(a.status)}</span></td>
         <td>${a.status === 'programada' ? `<button class="btn btn-sm btn-pri" data-concluir="${a.id}">Concluir</button> <button class="btn btn-sm btn-sec" data-cancelar="${a.id}">Cancelar</button>` : ''}</td></tr>`).join('')}</tbody></table></div>${paginacaoHTML(pg)}`
@@ -87,19 +85,16 @@ export async function render(el) {
           titulo: 'Concluir manutenção/serviço',
           corpo: `<form>${camposHTML([
             { n: 'km_execucao', t: 'KM na execução', tipo: 'number', padrao: cam.km_atual },
-            { n: 'valor', t: 'Valor gasto (R$) — gera despesa aprovada', tipo: 'number', ajuda: 'Deixe vazio se não houve custo ou se a despesa será lançada depois.' },
-            { n: 'fornecedor', t: 'Fornecedor', padrao: a.empresa || '' },
+            { n: 'empresa', t: 'Oficina / prestador do serviço', padrao: a.empresa || '', max: 120 },
+            { n: 'realizado', t: 'Serviço realizado (o que foi feito)', tipo: 'textarea', ajuda: 'Ex.: troca de óleo e filtros; pneu dianteiro substituído.' },
           ])}</form>`,
           botoes: [{ texto: 'Voltar', valor: null, classe: 'btn-sec' }, { texto: 'Concluir', valor: 'ok' }],
-          validar: (d) => (Number.isNaN(numero(d.valor)) || Number.isNaN(numero(d.km_execucao)) ? 'Valor ou KM inválido.' : null),
+          validar: (d) => (Number.isNaN(numero(d.km_execucao)) ? 'KM inválido.' : null),
         });
         if (!r) return;
-        const km = numero(r.dados.km_execucao), valor = numero(r.dados.valor);
-        await q(sb.from('atividades_operacionais').update({ status: 'concluida', km_execucao: km }).eq('id', a.id));
-        if (valor) {
-          await q(sb.from('despesas').insert({ caminhao_id: cam.id, categoria: CAT_DESPESA[a.tipo], descricao: `${nomeTipo(a.tipo)}: ${a.descricao}`,
-            valor, data: a.data, km, fornecedor: r.dados.fornecedor || null, status: 'aprovada', origem: 'atividade', origem_id: a.id }));
-        }
+        const km = numero(r.dados.km_execucao), feito = (r.dados.realizado || '').trim();
+        await q(sb.from('atividades_operacionais').update({ status: 'concluida', km_execucao: km, empresa: r.dados.empresa || a.empresa || null,
+          observacoes: feito ? [a.observacoes, `Realizado: ${feito}`].filter(Boolean).join('\n') : a.observacoes }).eq('id', a.id));
         aviso('Concluída.' + (a.plano_id ? ' Plano preventivo atualizado.' : '')); carregar();
       }
       if (t.dataset.cancelar) {

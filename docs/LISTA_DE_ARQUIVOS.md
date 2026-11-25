@@ -47,7 +47,6 @@
 | `tests/visual/capturas/17-manutencoes.png` | Captura do teste visual |
 | `tests/visual/capturas/18-diario.png` | Captura do teste visual |
 | `tests/visual/capturas/19-ocorrencias.png` | Captura do teste visual |
-| `tests/visual/capturas/20-despesas.png` | Captura do teste visual |
 | `tests/visual/capturas/21-documentos.png` | Captura do teste visual |
 | `tests/visual/capturas/22-relatorios.png` | Captura do teste visual |
 | `tests/visual/capturas/23-obras.png` | Captura do teste visual |
@@ -87,6 +86,9 @@
 | `web/js/lib/xlsx.js` | Gerador de Excel |
 | `web/js/lib/planilha-leitor.js` | Leitor de .xlsx/.csv sem biblioteca externa |
 | `web/js/lib/obras-sienge.js` | Leitura da relação de obras do Sienge e comparação com o cadastro |
+| `web/js/lib/relatorio-operacional.js` | Consolidação do relatório operacional (sem valores financeiros) |
+| `supabase/migrations/20261124000007_ajustes_gestao.sql` | Banco: sem financeiro, abastecimento com valor opcional, arquivar/excluir usuários |
+| `tests/unit/relatorios.test.mjs` | Testes do relatório operacional |
 | `web/js/lib/busca-texto.js` | Busca sem acentos por várias palavras |
 | `web/js/busca-obra.js` | Campo de pesquisa de obras (usado em todos os formulários) |
 | `web/js/abertura.js` | Animação de abertura (caminhão Munck com a logo oficial) |
@@ -100,7 +102,6 @@
 | `web/js/paginas/chave.js` | Tela: chave |
 | `web/js/paginas/configuracoes.js` | Tela: configuracoes |
 | `web/js/paginas/conta.js` | Tela: conta |
-| `web/js/paginas/despesas.js` | Tela: despesas |
 | `web/js/paginas/diario-forms.js` | Tela: diario-forms |
 | `web/js/paginas/diario.js` | Tela: diario |
 | `web/js/paginas/documentos.js` | Tela: documentos |
